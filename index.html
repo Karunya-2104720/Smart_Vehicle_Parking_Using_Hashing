@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking – Learn Hashing Through Parking</title>
+    <meta name="description" content="An interactive educational website demonstrating Hash Tables, Collision Resolution techniques (Linear Probing, Quadratic Probing, Double Hashing), and Open Addressing using a smart 11-slot parking lot.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/parking.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Main Header -->
+    <header class="app-header">
+        <div class="container header-inner">
+            <div class="brand-wrapper">
+                <div class="brand-logo-icon">🅿️</div>
+                <div class="brand-titles">
+                    <h1>Smart Parking <span class="badge-tag">Learn Hashing</span></h1>
+                    <div class="tagline">Data Structures &amp; Algorithms Interactive Laboratory (47 Slots: 0 &ndash; 46, Prime Modulus)</div>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <span id="backend-status-badge" class="badge-tag" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;">🟠 Checking Backend...</span>
+                <button id="sound-toggle" class="btn-icon-toggle active" title="Sound Effects Enabled" aria-label="Toggle Sound">🔊</button>
+                <button id="theme-toggle" class="btn-icon-toggle" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">☀️</button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="container">
+            <div class="nav-tabs">
+                <button class="tab-btn active" data-target="simulator-view">🅿️ Parking Lot Simulator</button>
+                <button class="tab-btn" data-target="collision-lab-view">💥 Collision Lab</button>
+                <button class="tab-btn" data-target="comparison-view">📊 Method Comparison</button>
+                <button class="tab-btn" data-target="learning-view">📖 Learn Hashing Guide</button>
+                <button class="tab-btn" data-target="calculator-view">🧮 Hash Calculator</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="main-content">
+        <div class="container">
+
+            <!-- KPI Dashboard Summary (7 Core Metrics) -->
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon">🅿️</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Total Parking Slots</span>
+                        <span class="kpi-value" id="kpi-total">47 Slots</span>
+                        <span class="kpi-sub">Bays 0 to 46 (Prime N=47)</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">🚗</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Occupied Slots</span>
+                        <span class="kpi-value" id="kpi-occupied">0 / 47</span>
+                        <span class="kpi-sub">Active parked vehicles</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">🟩</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Available Slots</span>
+                        <span class="kpi-value" id="kpi-available">47 / 47</span>
+                        <span class="kpi-sub">Vacant or Tombstones</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">📈</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Occupancy (&alpha;)</span>
+                        <span class="kpi-value" id="kpi-load-factor">0.0%</span>
+                        <div class="load-factor-wrapper">
+                            <div class="load-factor-bar-track">
+                                <div class="load-factor-bar-fill" id="kpi-lf-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">💥</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Number of Collisions</span>
+                        <span class="kpi-value" id="kpi-collisions">0</span>
+                        <span class="kpi-sub">Slot clashes detected</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">🔍</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Search Operations</span>
+                        <span class="kpi-value" id="kpi-searches">0</span>
+                        <span class="kpi-sub" id="kpi-searches-sub">0 found &bull; 0 missed</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">⚙️</div>
+                    <div class="kpi-info">
+                        <span class="kpi-label">Current Hashing Method</span>
+                        <span class="kpi-value" id="kpi-current-method" style="font-size: 1.05rem;">Linear Probing</span>
+                        <span class="kpi-sub">Formula: (h + i) % 11</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 VIEW 1: PARKING LOT SIMULATOR
+                 ========================================================================== -->
+            <section id="simulator-view" class="view-section active">
+
+                <!-- Step-by-Step Execution Pipeline Tracker -->
+                <div class="pipeline-card">
+                    <div class="pipeline-steps">
+                        <div class="pipeline-step active" id="pipe-step-1">
+                            <div class="step-circle">1</div>
+                            <span class="step-label">Input Plate</span>
+                        </div>
+                        <div class="pipeline-arrow">&rarr;</div>
+                        <div class="pipeline-step" id="pipe-step-2">
+                            <div class="step-circle">2</div>
+                            <span class="step-label">Extract Key</span>
+                        </div>
+                        <div class="pipeline-arrow">&rarr;</div>
+                        <div class="pipeline-step" id="pipe-step-3">
+                            <div class="step-circle">3</div>
+                            <span class="step-label">Hash: key % 11</span>
+                        </div>
+                        <div class="pipeline-arrow">&rarr;</div>
+                        <div class="pipeline-step" id="pipe-step-4">
+                            <div class="step-circle">4</div>
+                            <span class="step-label">Check Slot</span>
+                        </div>
+                        <div class="pipeline-arrow">&rarr;</div>
+                        <div class="pipeline-step" id="pipe-step-5">
+                            <div class="step-circle">5</div>
+                            <span class="step-label">Collision?</span>
+                        </div>
+                        <div class="pipeline-arrow">&rarr;</div>
+                        <div class="pipeline-step" id="pipe-step-6">
+                            <div class="step-circle">6</div>
+                            <span class="step-label">Assign Slot</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Grid: Controls & Narration (Left) vs Parking Lot & Table (Right) -->
+                <div class="dashboard-grid">
+                    
+                    <!-- Left Column: Controls & Narration -->
+                    <div class="controls-column">
+                        
+                        <!-- Control Center Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">🎮 Parking Operations</h2>
+                                <span class="card-subtitle">Slots 0 &ndash; 10</span>
+                            </div>
+
+                            <!-- Registration Input -->
+                            <div class="form-group">
+                                <label class="form-label" for="car-reg-input">Car Registration Plate</label>
+                                <div class="input-with-badge">
+                                    <input type="text" id="car-reg-input" class="text-input" placeholder="e.g. TN 09 AB 1021" value="TN 09 AB 1021">
+                                </div>
+                                <div class="extracted-key-pill" id="extracted-key-display">
+                                    Extracted Key: <strong>1021</strong> | Initial Hash: <code>1021 % 11 = 9</code>
+                                </div>
+                            </div>
+
+                            <!-- Collision Resolution Method Selector -->
+                            <div class="form-group">
+                                <label class="form-label">Collision Resolution Technique</label>
+                                <div class="method-grid">
+                                    <button class="method-btn" data-method="direct">
+                                        <span class="method-name">⚡ Direct Hashing</span>
+                                        <span class="method-formula">key % 11</span>
+                                    </button>
+                                    <button class="method-btn active" data-method="linear">
+                                        <span class="method-name">➡️ Linear Probing</span>
+                                        <span class="method-formula">(h + i) % 11</span>
+                                    </button>
+                                    <button class="method-btn" data-method="quadratic">
+                                        <span class="method-name">📐 Quadratic Probing</span>
+                                        <span class="method-formula">(h + i²) % 11</span>
+                                    </button>
+                                    <button class="method-btn" data-method="double">
+                                        <span class="method-name">🎯 Double Hashing</span>
+                                        <span class="method-formula">(h1 + i × h2) % 11</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="action-buttons-grid">
+                                <button class="btn btn-primary" id="btn-park">
+                                    <span>🚗</span> Park Car
+                                </button>
+                                <button class="btn btn-secondary" id="btn-find">
+                                    <span>🔍</span> Find Car
+                                </button>
+                                <button class="btn btn-danger" id="btn-remove">
+                                    <span>⛔</span> Remove Car
+                                </button>
+                                <button class="btn btn-accent" id="btn-random">
+                                    <span>🎲</span> Random Car
+                                </button>
+                                <button class="btn btn-secondary btn-block" id="btn-reset">
+                                    <span>🧹</span> Reset Entire Lot
+                                </button>
+                            </div>
+
+                            <!-- Quick Presets for Demo -->
+                            <div class="presets-section">
+                                <div class="presets-label">
+                                    <span>Demo Test Presets</span>
+                                    <span style="font-size: 0.68rem; color: #60a5fa;">Click to Fill</span>
+                                </div>
+                                <div class="preset-chips-wrap">
+                                    <button class="preset-chip" data-plate="TN 09 AB 1021">TN 09 AB 1021 (h=9)</button>
+                                    <button class="preset-chip" data-plate="KA 05 MN 2043">KA 05 MN 2043 (h=8)</button>
+                                    <button class="preset-chip" data-plate="MH 12 CD 4019">MH 12 CD 4019 (h=4)</button>
+                                    <button class="preset-chip" data-plate="DL 01 XY 3105">DL 01 XY 3105 (h=3)</button>
+                                    <button class="preset-chip collision-chip" data-plate="CAR 15">💥 Key 15 (h=4)</button>
+                                    <button class="preset-chip collision-chip" data-plate="CAR 26">💥 Key 26 (h=4)</button>
+                                    <button class="preset-chip collision-chip" data-plate="CAR 37">💥 Key 37 (h=4)</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Real-Time Narration & Calculation Log Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📝 Algorithm Narration &amp; Math Log</h3>
+                                <span class="card-subtitle">Live Step Breakdown</span>
+                            </div>
+                            <div class="narration-box" id="narration-log-box">
+                                <div class="narration-entry step-probe">
+                                    <strong>🚀 Welcome to Smart Parking:</strong> Enter a registration plate or select a preset to watch the hashing pipeline in action.
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column: Parking Lot Arena & Status Table -->
+                    <div class="visualization-column">
+
+                        <!-- Playback Speed Toolbar -->
+                        <div class="playback-bar">
+                            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">
+                                Animation Controls
+                            </div>
+                            <div class="speed-selector">
+                                <span>Speed:</span>
+                                <button class="speed-btn" data-speed="1200">Slow (1.2s)</button>
+                                <button class="speed-btn active" data-speed="650">Normal (0.6s)</button>
+                                <button class="speed-btn" data-speed="220">Fast (0.2s)</button>
+                                <button class="speed-btn" data-speed="0">Instant</button>
+                            </div>
+                        </div>
+
+                        <!-- Search Trajectory Chip Trail (Shows when searching) -->
+                        <div class="search-trail-card" id="search-trail-container" style="display: none;">
+                            <span class="trail-title">Search Probe Path:</span>
+                            <div class="trail-nodes" id="search-trail-nodes"></div>
+                        </div>
+
+                        <!-- The 11 Parking Bays Visual Arena -->
+                        <div class="parking-lot-arena">
+                            <div class="arena-header">
+                                <div class="arena-title">
+                                    <span>🏢 SHOPPING MALL SMART PARKING AREA</span>
+                                    <span class="badge-tag">N = 11 SLOTS (0 - 10)</span>
+                                </div>
+                                <div class="arena-legend">
+                                    <div class="legend-item"><span class="legend-dot empty"></span> Vacant</div>
+                                    <div class="legend-item"><span class="legend-dot occupied"></span> Occupied</div>
+                                    <div class="legend-item"><span class="legend-dot probing"></span> Probing</div>
+                                    <div class="legend-item"><span class="legend-dot collision"></span> Collision</div>
+                                    <div class="legend-item"><span class="legend-dot tombstone"></span> Tombstone 🪦</div>
+                                </div>
+                            </div>
+
+                            <!-- Parking Bays Grid: 0 to 10 with Central Driveway -->
+                            <div class="parking-bays-grid" id="parking-bays-container">
+                                <!-- Dynamically populated by visualizer.initSlots() -->
+                            </div>
+                        </div>
+
+                        <!-- Display Parking Status Table (Part C) -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📋 Slot Allocation Table</h3>
+                                <span class="card-subtitle">Real-time Data Structure Memory State</span>
+                            </div>
+                            <div class="table-responsive" id="parking-status-table-container">
+                                <!-- Populated dynamically by visualizer.renderTable() -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ==========================================================================
+                 VIEW 2: COLLISION LAB (Part D)
+                 ========================================================================== -->
+            <section id="collision-lab-view" class="view-section">
+                <div id="collision-lab-content">
+                    <!-- Populated dynamically by collision-lab.js -->
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 VIEW 3: METHOD COMPARISON (Part E)
+                 ========================================================================== -->
+            <section id="comparison-view" class="view-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">📊 Collision-Resolution Benchmark &amp; Comparison</h2>
+                            <p class="card-subtitle">Empirical performance metrics calculated from identical car workloads across all methods</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn btn-secondary btn-sm" onclick="window.ComparatorInstance.runBenchmark('standard')">Standard Traffic (7 Cars)</button>
+                            <button class="btn btn-secondary btn-sm" onclick="window.ComparatorInstance.runBenchmark('heavyCollision')">Severe Clash (6 Cars Mod 4)</button>
+                            <button class="btn btn-secondary btn-sm" onclick="window.ComparatorInstance.runBenchmark('highLoad')">High Load (10 Cars, 91%)</button>
+                        </div>
+                    </div>
+
+                    <div id="comparison-results-container">
+                        <!-- Populated by comparison.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 VIEW 4: LEARN HASHING GUIDE (Part G & H)
+                 ========================================================================== -->
+            <section id="learning-view" class="view-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">📖 Learn Hashing Through the Parking Analogy</h2>
+                            <p class="card-subtitle">Comprehensive interactive reference handbook for students &amp; engineers</p>
+                        </div>
+                    </div>
+
+                    <!-- Analogy Mapping Table -->
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+                        <h4 style="color: #93c5fd; font-size: 0.95rem; margin-bottom: 0.75rem;">🔑 The Parking Analogy Mapping</h4>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hashing Term</th>
+                                        <th>Parking Lot Analogy</th>
+                                        <th>Real-World Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Hash Table</strong></td>
+                                        <td>The 11-slot Parking Lot</td>
+                                        <td>The contiguous fixed memory buffer of size $N = 11$.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Key</strong></td>
+                                        <td>Car Registration Plate Numeric Portion</td>
+                                        <td>Unique identifier extracted from the car (e.g. <code>1021</code> from <code>TN 09 AB 1021</code>).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Hash Function</strong></td>
+                                        <td>Parking Allocation Rule</td>
+                                        <td>The mathematical formula $h(key) = key \pmod{11}$ mapping keys into valid slot indices.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Hash Index</strong></td>
+                                        <td>Preferred Parking Bay</td>
+                                        <td>The initial slot number $(0..10)$ the car attempts to park in.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Collision</strong></td>
+                                        <td>Two Cars Wanting the Same Bay</td>
+                                        <td>Occurs when $h(k_1) = h(k_2)$, but slot $h(k_1)$ is already occupied!</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Probing</strong></td>
+                                        <td>Driving Around Looking for Next Bay</td>
+                                        <td>Iterative search sequence across open addressing slots to find a vacant bay.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tombstone (Deleted)</strong></td>
+                                        <td>"Vacated Bay" Marker 🪦</td>
+                                        <td>Marker indicating a car departed. Allows insertion while keeping search chains alive!</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Load Factor (&alpha;)</strong></td>
+                                        <td>Lot Occupancy Percentage</td>
+                                        <td>$\alpha = \frac{\text{Occupied Slots}}{11}$. Higher $\alpha$ causes exponential probe times.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 8 Educational Concepts Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+                        
+                        <!-- Concept 1 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #60a5fa; margin-bottom: 0.4rem;">1. Why Use Modulo (% 11)?</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                A car key like <code>1021</code> cannot fit directly into 11 bays (numbered 0 to 10). Modulo arithmetic compresses any integer key into the finite range $[0, 10]$:
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #fde047;">
+                                index = key % 11
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                We choose <strong>11</strong> because prime table sizes significantly reduce harmonic collisions when keys share common divisors!
+                            </p>
+                        </div>
+
+                        <!-- Concept 2 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #f87171; margin-bottom: 0.4rem;">2. Why Collisions Happen (Pigeonhole Principle)</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                If you have 11 slots and thousands of cars in a city, by the Pigeonhole Principle, multiple keys MUST yield the exact same remainder:
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #fca5a5;">
+                                15 % 11 = 4 &nbsp;|&nbsp; 26 % 11 = 4 &nbsp;|&nbsp; 37 % 11 = 4
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                A collision is not a flaw in the system—it is a mathematical certainty that every hash table must be engineered to resolve.
+                            </p>
+                        </div>
+
+                        <!-- Concept 3 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #3b82f6; margin-bottom: 0.4rem;">3. Linear Probing &amp; Primary Clustering</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                If slot $h$ is taken, check $(h+1)\%11$, then $(h+2)\%11$, and so on.
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #93c5fd;">
+                                index = (hash(key) + i) % 11
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                <strong>The Flaw:</strong> Creates <em>Primary Clustering</em>. Contiguous blocks of occupied slots grow longer and longer, like a traffic jam where every new car gets stuck behind the previous ones.
+                            </p>
+                        </div>
+
+                        <!-- Concept 4 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #c084fc; margin-bottom: 0.4rem;">4. Quadratic Probing &amp; Secondary Clustering</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                Increases step size quadratically $(i^2 = 1, 4, 9, 16...)$ to jump cleanly over local clusters:
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #d8b4fe;">
+                                index = (hash(key) + i²) % 11
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                <strong>The Catch:</strong> Any two keys that share the exact same initial hash $h(k)$ will probe the exact same sequence (Secondary Clustering).
+                            </p>
+                        </div>
+
+                        <!-- Concept 5 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #f472b6; margin-bottom: 0.4rem;">5. Double Hashing (True Uniform Probing)</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                Applies a secondary hash function $h_2(key) = 7 - (key \pmod 7)$ as a key-specific step multiplier:
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #fbcfe8;">
+                                index = (h1(key) + i × h2(key)) % 11
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                Even if two cars have the same $h_1$, their step size $h_2$ is almost always completely different! This virtually eliminates clustering.
+                            </p>
+                        </div>
+
+                        <!-- Concept 6 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #fbbf24; margin-bottom: 0.4rem;">6. The Tombstone / Deleted Slot Dilemma</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                Why can't we simply set a slot back to EMPTY when a car leaves?
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.75rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #fde047;">
+                                If Car B was inserted past Slot 9 into Slot 10, resetting Slot 9 to EMPTY causes future searches for Car B to stop at Slot 9 and fail!
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                By marking it as a 🪦 <strong>TOMBSTONE</strong>, searches know to continue past it, while new car insertions can safely reclaim the bay.
+                            </p>
+                        </div>
+
+                        <!-- Concept 7 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #34d399; margin-bottom: 0.4rem;">7. Load Factor (&alpha;) &amp; The Performance Cliff</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                Defined as $\alpha = \frac{\text{Occupied Slots}}{\text{Total Slots}}$. In our parking lot:
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #6ee7b7;">
+                                Load Factor = 7 / 11 = 0.636 (63.6%)
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                For open addressing, expected search probe length is approximately $\frac{1}{1 - \alpha}$. When $\alpha > 0.75$, collisions skyrocket! Real databases trigger table resizing (re-hashing) at $\alpha \approx 0.7$.
+                            </p>
+                        </div>
+
+                        <!-- Concept 8 -->
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem;">
+                            <h4 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 0.4rem;">8. Open Addressing vs Separate Chaining</h4>
+                            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45;">
+                                <strong>Open Addressing</strong> (what we implement here) keeps all records strictly inside the fixed 11 slots without allocating linked lists or extra memory pointers.
+                            </p>
+                            <div style="font-family: var(--font-mono); font-size: 0.78rem; background: #090d15; padding: 0.5rem; border-radius: var(--radius-sm); margin: 0.5rem 0; color: #bae6fd;">
+                                Max items = 11 | Memory locality: Cache-friendly
+                            </div>
+                            <p style="font-size: 0.78rem; color: #94a3b8;">
+                                Separate Chaining would allow stacking multiple cars on top of each other using linked lists, but open addressing simulates true physical single-car parking bays!
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 VIEW 5: HASH CALCULATOR & MODULO PLAYGROUND
+                 ========================================================================== -->
+            <section id="calculator-view" class="view-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">🧮 Hash Calculator &amp; Modulo Playground</h2>
+                            <p class="card-subtitle">Type any car registration or key to inspect exact mathematical steps and probing sequences</p>
+                        </div>
+                    </div>
+
+                    <div style="max-width: 600px;">
+                        <label class="form-label" for="calc-input-key">Enter Key or Registration Plate</label>
+                        <div style="display: flex; gap: 0.75rem;">
+                            <input type="text" id="calc-input-key" class="text-input" placeholder="e.g. 1021 or TN 09 AB 1021" value="1021">
+                            <button class="btn btn-primary" id="calc-compute-btn">Compute Formulas</button>
+                        </div>
+                    </div>
+
+                    <div id="calc-results-output">
+                        <!-- Populated by app.js runCalculator() -->
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="container">
+            <div><strong>Smart Parking – Learn Hashing Through Parking</strong></div>
+            <div style="margin-top: 0.25rem;">Built for Advanced Data Structures &amp; Algorithms Education</div>
+            <div style="margin-top: 0.25rem; font-size: 0.72rem; color: #64748b;">
+                Implements Pure Vanilla JavaScript Hashing: Direct, Linear Probing, Quadratic Probing &amp; Double Hashing.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Dependencies in strict order -->
+    <script src="js/hash-core.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/collision-lab.js"></script>
+    <script src="js/comparison.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>

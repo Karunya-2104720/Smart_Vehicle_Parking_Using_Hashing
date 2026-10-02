@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: smart-parking-hashing
+    runtime: node
+    plan: free
+    buildCommand: npm --prefix backend install
+    startCommand: npm --prefix backend start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TABLE_SIZE
+        value: "47"
+      - key: SECONDARY_PRIME
+        value: "43"
