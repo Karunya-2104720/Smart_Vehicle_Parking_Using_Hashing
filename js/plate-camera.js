@@ -11,10 +11,11 @@
  * 8. Bharat Series - BH (Pan-India Board)
  *
  * Features:
- * - AUTOMATIC detection pipeline: Capture -> Detect -> OCR (no manual steps)
+ * - AUTOMATIC detection pipeline: Continuous camera detection every 2 seconds
  * - Indian number plate format validation only (<=10 chars, strict regex)
  * - Enhanced image preprocessing for improved OCR accuracy
  * - Robust camera initialization with retry & fallback
+ * - Stops automatically when plate is successfully detected
  */
 
 const BOARD_DEFINITIONS = {
@@ -243,6 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let cameraRetries    = 0;
     const MAX_RETRIES    = 2;
     const fullFrame = document.createElement('canvas');
+    let autoDetectInterval = null;
+    let autoDetectEnabled = true;
 
     function setStatus(message, isError = false) {
         if (!status) return;
@@ -318,11 +321,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             cameraRetries = 0;
-            if (captureButton) captureButton.disabled = false;
+            if (captureButton) {
+                captureButton.disabled = true;
+                captureButton.textContent = '🔄 Auto-Detecting...';
+            }
             const detector = await checkDetectorHealth();
             setStatus(detector.ready
-                ? 'Camera ready — position plate in frame and click "Capture & Auto-Detect".'
-                : 'Camera ready — click "Capture & Auto-Detect" to scan plate.');
+                ? 'Camera ready — automatic detection enabled. Position plate in frame.'
+                : 'Camera ready — automatic detection enabled. Position plate in frame.');
+
+            // Start automatic detection
+            startAutoDetect();
         } catch (error) {
             console.error('Camera error:', error);
             stopCamera();
@@ -334,6 +343,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (captureButton) captureButton.disabled = true;
             }
         }
+    }
+
+    function startAutoDetect() {
+        if (autoDetectInterval) clearInterval(autoDetectInterval);
+        autoDetectEnabled = true;
+        autoDetectInterval = setInterval(() => {
+            if (autoDetectEnabled && !isProcessing && video && !video.hidden && video.readyState >= 2) {
+                captureAndAutoDetect();
+            }
+        }, 2000); // Try to detect every 2 seconds
+    }
+
+    function stopAutoDetect() {
+        if (autoDetectInterval) {
+            clearInterval(autoDetectInterval);
+            autoDetectInterval = null;
+        }
+        autoDetectEnabled = false;
     }
 
     async function checkDetectorHealth() {
@@ -359,7 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (video) video.hidden = false;
         if (detectButton) detectButton.disabled = true;
         if (readButton) readButton.disabled = true;
-        if (captureButton) captureButton.disabled = true;
+        if (captureButton) {
+            captureButton.disabled = true;
+            captureButton.textContent = '🔄 Auto-Detecting...';
+        }
         if (resultCard) resultCard.style.display = 'none';
 
         modal.classList.add('active');
@@ -375,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function closeScanner() {
+        stopAutoDetect();
         stopCamera();
         modal.classList.remove('active');
         modal.setAttribute('aria-hidden', 'true');
@@ -384,6 +415,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         isReading = false;
         if (readButton) readButton.disabled = true;
+        if (captureButton) {
+            captureButton.textContent = '📸 Capture Image';
+        }
     }
 
     function switchScannerTab(tabName) {
@@ -399,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (video) video.hidden = false;
             startCamera();
         } else {
+            stopAutoDetect();
             stopCamera();
         }
     }
@@ -421,8 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
         capturedImage = true;
         detectedPlate = false;
         canvas.hidden = false;
-        video.hidden  = true;
-        stopCamera();
+        // Don't hide video - keep it running for continuous detection
+        // video.hidden  = true;
+        // stopCamera();
 
         if (detectButton)  detectButton.disabled = true;
         if (readButton)    readButton.disabled = true;
@@ -430,6 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Step 2+3: Auto-detect board type + OCR text
         await runAutoDetectPipeline();
+
+        // Re-enable capture button for next detection attempt
+        if (captureButton) captureButton.disabled = false;
     }
 
     /* ── IMAGE PREPROCESSING for OCR accuracy ── */
@@ -539,10 +578,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch { /* fallback to canvas color classifier */ }
 
-            // Stop if no plates detected
+            // Stop if no plates detected - will retry automatically
             if (!hasDetections && !serverBoard) {
                 detectedPlate = false;
-                setStatus('No license plate detected. Please ensure the plate is clearly visible in the image and try again.', true);
+                setStatus('No license plate detected. Automatic detection will retry in 2 seconds...', true);
                 return;
             }
 
@@ -564,8 +603,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (plateText) {
                 setStatus(`Detected: "${recognizedText}" (${currentBoardInfo.name}). Click "Auto-Fill & Park" to proceed.`);
+                // Stop auto-detect on successful detection
+                stopAutoDetect();
+                if (captureButton) {
+                    captureButton.textContent = '✓ Detection Complete';
+                }
             } else {
-                setStatus('Could not read plate clearly. Try again with better lighting or a clearer image.');
+                setStatus('Could not read plate clearly. Automatic detection will retry in 2 seconds...');
             }
         } catch (error) {
             setStatus(`Detection error: ${error.message}`, true);
