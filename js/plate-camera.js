@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let cameraRetries    = 0;
     const MAX_RETRIES    = 2;
     const fullFrame = document.createElement('canvas');
-    let autoDetectInterval = null;
-    let autoDetectEnabled = true;
+    let autoDetectAttempts = 0;
+    const MAX_AUTO_DETECT_ATTEMPTS = 2;
 
     function setStatus(message, isError = false) {
         if (!status) return;
@@ -321,17 +321,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             cameraRetries = 0;
+            autoDetectAttempts = 0;
             if (captureButton) {
-                captureButton.disabled = true;
-                captureButton.textContent = '🔄 Auto-Detecting...';
+                captureButton.disabled = false;
+                captureButton.textContent = '� Auto-Detect (Attempt 1/2)';
             }
             const detector = await checkDetectorHealth();
             setStatus(detector.ready
-                ? 'Camera ready — automatic detection enabled. Position plate in frame.'
-                : 'Camera ready — automatic detection enabled. Position plate in frame.');
-
-            // Start automatic detection
-            startAutoDetect();
+                ? 'Camera ready — click "Auto-Detect" to scan plate (2 attempts).'
+                : 'Camera ready — click "Auto-Detect" to scan plate (2 attempts).');
         } catch (error) {
             console.error('Camera error:', error);
             stopCamera();
@@ -343,24 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (captureButton) captureButton.disabled = true;
             }
         }
-    }
-
-    function startAutoDetect() {
-        if (autoDetectInterval) clearInterval(autoDetectInterval);
-        autoDetectEnabled = true;
-        autoDetectInterval = setInterval(() => {
-            if (autoDetectEnabled && !isProcessing && video && !video.hidden && video.readyState >= 2) {
-                captureAndAutoDetect();
-            }
-        }, 2000); // Try to detect every 2 seconds
-    }
-
-    function stopAutoDetect() {
-        if (autoDetectInterval) {
-            clearInterval(autoDetectInterval);
-            autoDetectInterval = null;
-        }
-        autoDetectEnabled = false;
     }
 
     async function checkDetectorHealth() {
@@ -382,13 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function openScanner(initialBoardType = null) {
         capturedImage = false;
         detectedPlate = false;
+        autoDetectAttempts = 0;
         if (canvas) canvas.hidden = true;
         if (video) video.hidden = false;
         if (detectButton) detectButton.disabled = true;
         if (readButton) readButton.disabled = true;
         if (captureButton) {
-            captureButton.disabled = true;
-            captureButton.textContent = '🔄 Auto-Detecting...';
+            captureButton.disabled = false;
+            captureButton.textContent = '� Auto-Detect (Attempt 1/2)';
+            captureButton.onclick = null; // Reset any custom handlers
         }
         if (resultCard) resultCard.style.display = 'none';
 
@@ -405,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function closeScanner() {
-        stopAutoDetect();
         stopCamera();
         modal.classList.remove('active');
         modal.setAttribute('aria-hidden', 'true');
@@ -416,8 +397,10 @@ document.addEventListener('DOMContentLoaded', () => {
         isReading = false;
         if (readButton) readButton.disabled = true;
         if (captureButton) {
-            captureButton.textContent = '📸 Capture Image';
+            captureButton.textContent = '📸 Auto-Detect (Attempt 1/2)';
+            captureButton.onclick = null; // Remove the manual entry handler
         }
+        autoDetectAttempts = 0;
     }
 
     function switchScannerTab(tabName) {
@@ -431,9 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabName === 'camera') {
             if (canvas) canvas.hidden = true;
             if (video) video.hidden = false;
+            autoDetectAttempts = 0;
             startCamera();
         } else {
-            stopAutoDetect();
             stopCamera();
         }
     }
@@ -443,6 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!video.videoWidth || !video.videoHeight) {
             setStatus('Camera preview not ready yet. Please wait a moment.', true);
             return;
+        }
+
+        autoDetectAttempts++;
+        if (captureButton) {
+            captureButton.textContent = `🔄 Auto-Detecting... (Attempt ${autoDetectAttempts}/2)`;
+            captureButton.disabled = true;
         }
 
         // Step 1: Capture frame from video
@@ -456,19 +445,32 @@ document.addEventListener('DOMContentLoaded', () => {
         capturedImage = true;
         detectedPlate = false;
         canvas.hidden = false;
-        // Don't hide video - keep it running for continuous detection
-        // video.hidden  = true;
-        // stopCamera();
+        video.hidden  = true;
+        stopCamera();
 
         if (detectButton)  detectButton.disabled = true;
         if (readButton)    readButton.disabled = true;
-        if (captureButton) captureButton.disabled = true;
 
         // Step 2+3: Auto-detect board type + OCR text
         await runAutoDetectPipeline();
 
-        // Re-enable capture button for next detection attempt
-        if (captureButton) captureButton.disabled = false;
+        // Re-enable capture button for next detection attempt if not successful
+        if (captureButton && !detectedPlate && autoDetectAttempts < MAX_AUTO_DETECT_ATTEMPTS) {
+            captureButton.disabled = false;
+            captureButton.textContent = `📸 Retry Detection (Attempt ${autoDetectAttempts + 1}/2)`;
+            // Restart camera for next attempt
+            startCamera();
+        } else if (captureButton && !detectedPlate && autoDetectAttempts >= MAX_AUTO_DETECT_ATTEMPTS) {
+            captureButton.textContent = '✗ Enter Manually';
+            captureButton.disabled = false;
+            captureButton.onclick = () => {
+                closeScanner();
+                if (registrationInput) {
+                    registrationInput.focus();
+                    registrationInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+        }
     }
 
     /* ── IMAGE PREPROCESSING for OCR accuracy ── */
@@ -578,10 +580,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch { /* fallback to canvas color classifier */ }
 
-            // Stop if no plates detected - will retry automatically
+            // Stop if no plates detected
             if (!hasDetections && !serverBoard) {
                 detectedPlate = false;
-                setStatus('No license plate detected. Automatic detection will retry in 2 seconds...', true);
+                if (autoDetectAttempts < MAX_AUTO_DETECT_ATTEMPTS) {
+                    setStatus(`No license plate detected. You have ${MAX_AUTO_DETECT_ATTEMPTS - autoDetectAttempts} attempt(s) remaining.`, true);
+                } else {
+                    setStatus('No license plate detected after 2 attempts. Please enter the registration number manually.', true);
+                }
                 return;
             }
 
@@ -603,13 +609,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (plateText) {
                 setStatus(`Detected: "${recognizedText}" (${currentBoardInfo.name}). Click "Auto-Fill & Park" to proceed.`);
-                // Stop auto-detect on successful detection
-                stopAutoDetect();
                 if (captureButton) {
                     captureButton.textContent = '✓ Detection Complete';
                 }
             } else {
-                setStatus('Could not read plate clearly. Automatic detection will retry in 2 seconds...');
+                if (autoDetectAttempts < MAX_AUTO_DETECT_ATTEMPTS) {
+                    setStatus('Could not read plate clearly. You can retry or enter manually.', true);
+                } else {
+                    setStatus('Could not read plate clearly after 2 attempts. Please enter the registration number manually.', true);
+                }
             }
         } catch (error) {
             setStatus(`Detection error: ${error.message}`, true);
@@ -617,7 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isProcessing = false;
             if (detectButton)  detectButton.disabled = !capturedImage;
             if (readButton)    readButton.disabled = !detectedPlate;
-            if (captureButton) captureButton.disabled = false;
         }
     }
 
@@ -1012,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     openButton.addEventListener('click', () => openScanner());
     if (closeButton) closeButton.addEventListener('click', closeScanner);
-    if (captureButton) captureButton.addEventListener('click', captureAndAutoDetect);
+    if (captureButton) captureButton.onclick = captureAndAutoDetect;
     if (detectButton) detectButton.addEventListener('click', detectPlate);
     if (readButton) readButton.addEventListener('click', recognizePlate);
     if (autoParkButton) autoParkButton.addEventListener('click', autoParkDetectedPlate);
