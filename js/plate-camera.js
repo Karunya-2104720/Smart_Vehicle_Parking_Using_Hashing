@@ -148,7 +148,25 @@ const INDIAN_STATE_CODES = new Set([
    ───────────────────────────────────────── */
 function validateIndianPlate(raw) {
     if (!raw) return null;
-    const text = raw.toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    // Correct common OCR mistakes
+    let text = raw.toUpperCase()
+        .replace(/[^A-Z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    
+    // Character corrections for common OCR errors
+    text = text
+        .replace(/[OØ]/g, '0')  // O to 0
+        .replace(/[Il]/g, '1')   // I or l to 1
+        .replace(/[Z]/g, '2')   // Z to 2 (sometimes confused)
+        .replace(/[S]/g, '5')   // S to 5
+        .replace(/[B]/g, '8')   // B to 8
+        .replace(/[G]/g, '6')   // G to 6
+        .replace(/[T]/g, '7')   // T to 7
+        .replace(/\s+/g, ' ')
+        .trim();
+    
     const compact = text.replace(/\s/g, '');
 
     // Hard limit: 10 alphanumeric characters (strict)
@@ -597,13 +615,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 wordrec_enable_assoc: '1',
                 textord_noise_normratio: '2.0',
                 textord_noise_size: '2.0',
+                tessedit_reject_mode: '0',  // Don't reject low-confidence words
+                tessedit_minimal_rejection: '1',
             });
         }
 
         // Multiple passes with different preprocessing strategies and scales
-        const scales = [1, 1.5, 2];
+        const scales = [1, 1.5, 2, 2.5];
         const modes = ['standard', 'high-contrast', 'grayscale', 'inverted'];
         let bestResult = null, bestConfidence = 0;
+        let allResults = [];
 
         for (const scale of scales) {
             for (const mode of modes) {
@@ -637,14 +658,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     const validated = validateIndianPlate(cleanedText);
-                    if (validated && conf > bestConfidence) {
-                        bestResult = validated;
-                        bestConfidence = conf;
+                    if (validated) {
+                        allResults.push({ text: validated, confidence: conf });
+                        if (conf > bestConfidence) {
+                            bestResult = validated;
+                            bestConfidence = conf;
+                        }
                     }
-                    if (validated && conf > 75) return bestResult; // Very good, return immediately
+                    if (validated && conf > 80) return bestResult; // Very good, return immediately
                 } catch { /* try next pass */ }
             }
         }
+        
+        // If we have results but confidence is low, still return the best one
+        if (bestResult && bestConfidence > 50) {
+            return bestResult;
+        }
+        
         return bestResult;  // null if no valid Indian plate found
     }
 
