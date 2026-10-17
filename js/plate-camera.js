@@ -516,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Board type detection
             let serverBoard = null;
+            let hasDetections = false;
             try {
                 const imageBlob = await new Promise((resolve, reject) => {
                     fullFrame.toBlob(b => b ? resolve(b) : reject(new Error('Encode failed')), 'image/jpeg', 0.95);
@@ -529,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     const result = await response.json();
                     if (result.detections && result.detections.length > 0) {
+                        hasDetections = true;
                         const best = result.detections[0];
                         if (best.boardType && best.boardType.code) {
                             serverBoard = BOARD_DEFINITIONS[best.boardType.code];
@@ -536,6 +538,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } catch { /* fallback to canvas color classifier */ }
+
+            // Stop if no plates detected
+            if (!hasDetections && !serverBoard) {
+                detectedPlate = false;
+                setStatus('No license plate detected. Please ensure the plate is clearly visible in the image and try again.', true);
+                return;
+            }
 
             currentBoardInfo = serverBoard || classifyCanvasPlateColors(canvas);
             detectedPlate    = true;
