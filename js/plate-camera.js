@@ -10,10 +10,11 @@
  * 7. Military & Armed Forces (Arrow Board)
  * 8. Bharat Series - BH (Pan-India Board)
  *
- * Provides 3 input channels:
- * - Live Camera Video Feed
- * - Drag-and-drop Image File Upload
- * - Interactive Sample Plate Board Selector
+ * Features:
+ * - AUTOMATIC detection pipeline: Capture -> Detect -> OCR (no manual steps)
+ * - Indian number plate format validation only (<=10 chars, strict regex)
+ * - Enhanced image preprocessing for improved OCR accuracy
+ * - Robust camera initialization with retry & fallback
  */
 
 const BOARD_DEFINITIONS = {
@@ -131,6 +132,68 @@ const BOARD_DEFINITIONS = {
     }
 };
 
+/* ─────────────────────────────────────────
+   Indian state/UT codes for plate validation
+   ───────────────────────────────────────── */
+const INDIAN_STATE_CODES = new Set([
+    'AP','AR','AS','BR','CG','GA','GJ','HR','HP','JH','KA','KL',
+    'MP','MH','MN','ML','MZ','NL','OD','PB','RJ','SK','TN','TG',
+    'TR','UK','UP','WB','AN','CH','DN','DD','DL','JK','LA','LD','PY'
+]);
+
+/* ─────────────────────────────────────────
+   Indian plate format validators
+   Returns cleaned plate string (<=10 alphanumeric chars) or null
+   Strict validation for Indian number plates only
+   ───────────────────────────────────────── */
+function validateIndianPlate(raw) {
+    if (!raw) return null;
+    const text = raw.toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const compact = text.replace(/\s/g, '');
+
+    // Hard limit: 10 alphanumeric characters (strict)
+    if (compact.length > 10) return null;
+    if (compact.length < 5) return null; // Minimum reasonable length
+
+    // 1. BH Series: YY BH NNNN LL  e.g. "22BH8421AB" (exactly 10 chars)
+    const bhMatch = compact.match(/^(\d{2})BH(\d{4})([A-Z]{2})$/);
+    if (bhMatch && compact.length === 10) {
+        return `${bhMatch[1]} BH ${bhMatch[2]} ${bhMatch[3]}`;
+    }
+
+    // 2. Standard 4-part: SS DD LL NNNN  e.g. "AP04LK1234" (8-10 chars)
+    const stdMatch = compact.match(/^([A-Z]{2})(\d{2})([A-Z]{2})(\d{4})$/);
+    if (stdMatch && INDIAN_STATE_CODES.has(stdMatch[1]) && compact.length === 10) {
+        return `${stdMatch[1]} ${stdMatch[2]} ${stdMatch[3]} ${stdMatch[4]}`;
+    }
+    
+    // Allow shorter standard format: SS DD L NNN  (e.g., "KA01M1234")
+    const stdShortMatch = compact.match(/^([A-Z]{2})(\d{2})([A-Z])(\d{4})$/);
+    if (stdShortMatch && INDIAN_STATE_CODES.has(stdShortMatch[1]) && compact.length === 9) {
+        return `${stdShortMatch[1]} ${stdShortMatch[2]} ${stdShortMatch[3]} ${stdShortMatch[4]}`;
+    }
+
+    // 3. EV plate: SS DD EV NNNN  e.g. "DL04EV2024" (8-9 chars)
+    const evMatch = compact.match(/^([A-Z]{2})(\d{2})EV(\d{4})$/);
+    if (evMatch && INDIAN_STATE_CODES.has(evMatch[1]) && compact.length === 9) {
+        return `${evMatch[1]} ${evMatch[2]} EV ${evMatch[3]}`;
+    }
+
+    // 4. Diplomatic: NNN CD/UN/CC NNN  e.g. "77CD01" (5-7 chars)
+    const dipMatch = compact.match(/^(\d{2,3})(CD|UN|CC)(\d{2,3})$/);
+    if (dipMatch && compact.length >= 5 && compact.length <= 7) {
+        return `${dipMatch[1]} ${dipMatch[2]} ${dipMatch[3]}`;
+    }
+
+    // 5. Military: NN L NNNNN L  e.g. "21D654321A" (8-10 chars)
+    const milMatch = compact.match(/^(\d{2})([A-Z])(\d{5,7})([A-Z]?)$/);
+    if (milMatch && compact.length >= 8 && compact.length <= 10) {
+        return `\u2191 ${milMatch[1]} ${milMatch[2]} ${milMatch[3]} ${milMatch[4] || ''}`.trim();
+    }
+
+    return null;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const openButton = document.getElementById('btn-scan-plate');
     const modal = document.getElementById('plate-camera-modal');
@@ -150,13 +213,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!openButton || !modal) return;
 
-    let mediaStream = null;
-    let ocrWorker = null;
-    let capturedImage = false;
-    let detectedPlate = false;
-    let isReading = false;
+    let mediaStream      = null;
+    let ocrWorker        = null;
+    let capturedImage    = false;
+    let detectedPlate    = false;
+    let isProcessing     = false;   // Unified pipeline lock
     let currentBoardInfo = BOARD_DEFINITIONS.WHITE_PRIVATE;
-    let recognizedText = '';
+    let recognizedText   = '';
+    let cameraRetries    = 0;
+    const MAX_RETRIES    = 2;
     const fullFrame = document.createElement('canvas');
 
     function setStatus(message, isError = false) {
@@ -167,46 +232,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function stopCamera() {
         if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream.getTracks().forEach(track => {
+                track.stop();
+                track.enabled = false;
+            });
             mediaStream = null;
         }
-        if (video) video.srcObject = null;
+        if (video) {
+            video.srcObject = null;
+            video.load();
+            video.removeAttribute('src');
+        }
     }
 
-    async function startCamera() {
+    async function startCamera(retry = false) {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setStatus('Camera access is unavailable on this device. You can still use "Upload Photo" or "Sample Boards".', true);
+            setStatus('Camera not available on this device. Use "Upload Photo" or "Sample Boards".', true);
             if (captureButton) captureButton.disabled = true;
             return;
         }
+        // Always stop previous stream before requesting a new one
+        stopCamera();
+        // Reset video element
+        video.srcObject = null;
+        video.load();
 
-        setStatus('Requesting camera permission…');
+        setStatus(retry ? `Retrying camera… (attempt ${cameraRetries}/${MAX_RETRIES})` : 'Requesting camera access…');
+        if (!retry) cameraRetries = 0;
         if (captureButton) captureButton.disabled = true;
 
+        // Constraint sets: first HD rear, then any camera as fallback
+        const constraintSet = (retry && cameraRetries > 0)
+            ? { audio: false, video: true }
+            : { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
+            const stream = await navigator.mediaDevices.getUserMedia(constraintSet);
             if (!modal.classList.contains('active')) {
-                stream.getTracks().forEach(track => track.stop());
+                stream.getTracks().forEach(t => t.stop());
                 return;
             }
             mediaStream = stream;
             video.srcObject = mediaStream;
-            await video.play();
+            video.muted = true;
+            video.playsInline = true;
+            video.setAttribute('autoplay', '');
+            video.setAttribute('playsinline', '');
+
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Video play timed out')), 15000);
+                video.onloadedmetadata = () => {
+                    clearTimeout(timeout);
+                    video.play().then(() => {
+                        // Verify video is actually playing
+                        setTimeout(() => {
+                            if (video.readyState >= 2) {
+                                resolve();
+                            } else {
+                                reject(new Error('Video not ready after play'));
+                            }
+                        }, 500);
+                    }).catch(reject);
+                };
+                video.onerror = () => { clearTimeout(timeout); reject(new Error('Video element error')); };
+            });
+
+            cameraRetries = 0;
             if (captureButton) captureButton.disabled = false;
             const detector = await checkDetectorHealth();
             setStatus(detector.ready
-                ? 'Camera ready. Position plate inside the guide frame and click "Capture Image".'
-                : 'Camera ready. Local detector: ' + detector.error);
+                ? 'Camera ready — position plate in frame and click "Capture & Auto-Detect".'
+                : 'Camera ready — click "Capture & Auto-Detect" to scan plate.');
         } catch (error) {
+            console.error('Camera error:', error);
             stopCamera();
-            setStatus('Camera permission denied or not found. Switch to "Upload Photo" or "Sample Boards" tab.', true);
+            cameraRetries++;
+            if (cameraRetries <= MAX_RETRIES) {
+                setTimeout(() => startCamera(true), 1500);
+            } else {
+                setStatus('Camera permission denied or unavailable. Switch to "Upload Photo" or "Sample Boards".', true);
+                if (captureButton) captureButton.disabled = true;
+            }
         }
     }
 
@@ -277,33 +383,227 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function captureFrame() {
+    async function captureAndAutoDetect() {
+        if (isProcessing) return;
         if (!video.videoWidth || !video.videoHeight) {
-            setStatus('Camera preview is not ready yet. Please wait a moment.', true);
+            setStatus('Camera preview not ready yet. Please wait a moment.', true);
             return;
         }
 
-        fullFrame.width = video.videoWidth;
+        // Step 1: Capture frame from video
+        fullFrame.width  = video.videoWidth;
         fullFrame.height = video.videoHeight;
-        canvas.width = video.videoWidth;
+        canvas.width  = video.videoWidth;
         canvas.height = video.videoHeight;
-        const fullFrameContext = fullFrame.getContext('2d');
-        const context = canvas.getContext('2d');
-        if (!fullFrameContext || !context) {
-            setStatus('Could not capture frame from camera.', true);
-            return;
-        }
+        fullFrame.getContext('2d').drawImage(video, 0, 0);
+        canvas.getContext('2d').drawImage(fullFrame, 0, 0);
 
-        fullFrameContext.drawImage(video, 0, 0, fullFrame.width, fullFrame.height);
-        context.drawImage(fullFrame, 0, 0);
         capturedImage = true;
         detectedPlate = false;
         canvas.hidden = false;
-        video.hidden = true;
+        video.hidden  = true;
         stopCamera();
-        if (detectButton) detectButton.disabled = false;
-        if (readButton) readButton.disabled = true;
-        setStatus('Image captured! Click "Detect Plate & Board Type" to analyze.');
+
+        if (detectButton)  detectButton.disabled = true;
+        if (readButton)    readButton.disabled = true;
+        if (captureButton) captureButton.disabled = true;
+
+        // Step 2+3: Auto-detect board type + OCR text
+        await runAutoDetectPipeline();
+    }
+
+    /* ── IMAGE PREPROCESSING for OCR accuracy ── */
+    function preprocessCanvasForOCR(sourceCanvas, mode = 'standard') {
+        const w = sourceCanvas.width, h = sourceCanvas.height;
+        // Scale up small images (OCR works better at >=300px height)
+        const scale = h < 300 ? Math.ceil(300 / h) : 1;
+        const pw = w * scale, ph = h * scale;
+        const proc = document.createElement('canvas');
+        proc.width = pw; proc.height = ph;
+        const ctx = proc.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(sourceCanvas, 0, 0, pw, ph);
+        const imgData = ctx.getImageData(0, 0, pw, ph);
+        const d = imgData.data;
+
+        // Calculate histogram for adaptive thresholding
+        let histogram = new Array(256).fill(0);
+        for (let i = 0; i < d.length; i += 4) {
+            const gray = Math.round(0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]);
+            histogram[gray]++;
+        }
+
+        // Otsu's method for automatic thresholding
+        let total = pw * ph;
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * histogram[i];
+        let sumB = 0, wB = 0, wF = 0;
+        let maxVariance = 0, threshold = 127;
+        for (let i = 0; i < 256; i++) {
+            wB += histogram[i];
+            if (wB === 0) continue;
+            wF = total - wB;
+            if (wF === 0) break;
+            sumB += i * histogram[i];
+            let mB = sumB / wB;
+            let mF = (sum - sumB) / wF;
+            let variance = wB * wF * (mB - mF) * (mB - mF);
+            if (variance > maxVariance) {
+                maxVariance = variance;
+                threshold = i;
+            }
+        }
+
+        for (let i = 0; i < d.length; i += 4) {
+            const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+            
+            if (mode === 'standard') {
+                // Grayscale + contrast stretch + adaptive threshold
+                const adjusted = Math.min(255, Math.max(0, 2.0 * (gray - 128) + 128));
+                const binary = adjusted > threshold ? 255 : 0;
+                d[i] = d[i+1] = d[i+2] = binary;
+            } else if (mode === 'high-contrast') {
+                // Aggressive contrast for low-quality images
+                const adjusted = Math.min(255, Math.max(0, 3.0 * (gray - 128) + 128));
+                const binary = adjusted > (threshold - 10) ? 255 : 0;
+                d[i] = d[i+1] = d[i+2] = binary;
+            } else if (mode === 'grayscale') {
+                // Just grayscale, no thresholding
+                d[i] = d[i+1] = d[i+2] = gray;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        return proc;
+    }
+
+    /* ── FULL AUTO PIPELINE: Board Detect + OCR ── */
+    async function runAutoDetectPipeline() {
+        if (!capturedImage || isProcessing) return;
+        isProcessing = true;
+        setStatus('Running AI plate & board classification…');
+
+        try {
+            // Board type detection
+            let serverBoard = null;
+            try {
+                const imageBlob = await new Promise((resolve, reject) => {
+                    fullFrame.toBlob(b => b ? resolve(b) : reject(new Error('Encode failed')), 'image/jpeg', 0.95);
+                });
+                const response = await fetch(`${localVisionServiceUrl}/detect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'image/jpeg' },
+                    body: imageBlob,
+                    signal: AbortSignal.timeout(6000)
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.detections && result.detections.length > 0) {
+                        const best = result.detections[0];
+                        if (best.boardType && best.boardType.code) {
+                            serverBoard = BOARD_DEFINITIONS[best.boardType.code];
+                        }
+                    }
+                }
+            } catch { /* fallback to canvas color classifier */ }
+
+            currentBoardInfo = serverBoard || classifyCanvasPlateColors(canvas);
+            detectedPlate    = true;
+            setStatus(`Board: ${currentBoardInfo.badge} — Reading plate text…`);
+
+            // OCR text recognition (automatic)
+            const plateText = await runOCR();
+            recognizedText  = plateText || currentBoardInfo.samplePlate;
+
+            // Auto-populate registration field
+            if (registrationInput) {
+                registrationInput.value = recognizedText;
+                registrationInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            showDetectionResult(currentBoardInfo, recognizedText);
+
+            if (plateText) {
+                setStatus(`Detected: "${recognizedText}" (${currentBoardInfo.name}). Click "Auto-Fill & Park" to proceed.`);
+            } else {
+                setStatus('Could not read plate clearly — showing closest match. Verify before parking.');
+            }
+        } catch (error) {
+            setStatus(`Detection error: ${error.message}`, true);
+        } finally {
+            isProcessing = false;
+            if (detectButton)  detectButton.disabled = !capturedImage;
+            if (readButton)    readButton.disabled = !detectedPlate;
+            if (captureButton) captureButton.disabled = false;
+        }
+    }
+
+    async function loadOcrLibrary() {
+        if (window.Tesseract) return window.Tesseract;
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+            script.async = true;
+            script.onload  = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error('OCR API missing'));
+            script.onerror = () => reject(new Error('Could not load OCR library. Check internet.'));
+            document.head.appendChild(script);
+        });
+    }
+
+    async function runOCR() {
+        const tesseract = await loadOcrLibrary();
+        if (!ocrWorker) {
+            ocrWorker = await tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+                        setStatus(`Reading text… ${Math.round(m.progress * 100)}%`);
+                    }
+                }
+            });
+            await ocrWorker.setParameters({
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+                tessedit_pageseg_mode:   '7',   // Single text line mode
+                preserve_interword_spaces: '1',
+                tessedit_do_invert: '0',
+                textord_force_make_prop_words: '1',
+                edges_use_new_outline_complexity: '1',
+                textord_baseline_type: '1',
+            });
+        }
+
+        // Multiple passes with different preprocessing strategies
+        const passes = [
+            preprocessCanvasForOCR(canvas, 'standard'),
+            preprocessCanvasForOCR(canvas, 'high-contrast'),
+            preprocessCanvasForOCR(canvas, 'grayscale'),
+            canvas
+        ];
+        let bestResult = null, bestConfidence = 0;
+
+        for (const src of passes) {
+            try {
+                const result = await ocrWorker.recognize(src);
+                const rawText = result.data.text || '';
+                const conf    = result.data.confidence || 0;
+                
+                // Clean up OCR output
+                const cleanedText = rawText
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, '')
+                    .replace(/([A-Z]{2})(\d)/, '$1 $2')
+                    .replace(/(\d{2})([A-Z])/, '$1 $2')
+                    .replace(/([A-Z]{2,3})(\d{4})/, '$1 $2')
+                    .trim();
+                
+                const validated = validateIndianPlate(cleanedText);
+                if (validated && conf > bestConfidence) {
+                    bestResult = validated;
+                    bestConfidence = conf;
+                }
+                if (validated && conf > 70) break; // Good enough, stop
+            } catch { /* try next pass */ }
+        }
+        return bestResult;  // null if no valid Indian plate found
     }
 
     function handleFileUpload(file) {
@@ -492,89 +792,34 @@ document.addEventListener('DOMContentLoaded', () => {
         setStatus(`Loaded ${currentBoardInfo.name} sample. Click "Detect" or "Auto-Fill & Park".`);
     }
 
+
+
+    /* ── Manual re-run buttons ── */
     async function detectPlate() {
-        if (!capturedImage || isReading) return;
-        isReading = true;
-        if (detectButton) detectButton.disabled = true;
-        if (readButton) readButton.disabled = true;
-        if (captureButton) captureButton.disabled = true;
-        setStatus('Running AI plate & board classification…');
-
-        try {
-            let serverBoard = null;
-            // 1. Try local YOLO server first
-            try {
-                const imageBlob = await new Promise((resolve, reject) => {
-                    fullFrame.toBlob(blob => blob ? resolve(blob) : reject(new Error('Encode failed')), 'image/jpeg', 0.92);
-                });
-                const response = await fetch(`${localVisionServiceUrl}/detect`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'image/jpeg' },
-                    body: imageBlob,
-                    signal: AbortSignal.timeout(6000)
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.detections && result.detections.length > 0) {
-                        const best = result.detections[0];
-                        if (best.boardType && best.boardType.code) {
-                            serverBoard = BOARD_DEFINITIONS[best.boardType.code];
-                        }
-                    }
-                }
-            } catch {
-                // Server unavailable or timed out; fallback to client canvas
-            }
-
-            // 2. Client-side Canvas Color Classifier
-            const canvasBoard = classifyCanvasPlateColors(canvas);
-            currentBoardInfo = serverBoard || canvasBoard;
-
-            detectedPlate = true;
-            if (readButton) readButton.disabled = false;
-            setStatus(`Plate detected! Classified as: ${currentBoardInfo.badge}. Select "Read plate text".`);
-            showDetectionResult(currentBoardInfo, recognizedText || currentBoardInfo.samplePlate);
-        } catch (error) {
-            setStatus(`Detection notice: ${error.message}. You can still read text or auto-park.`, true);
-        } finally {
-            isReading = false;
-            if (detectButton) detectButton.disabled = !capturedImage;
-            if (captureButton) captureButton.disabled = false;
-        }
+        if (!capturedImage || isProcessing) return;
+        await runAutoDetectPipeline();
     }
 
-    function formatPlateCandidate(text) {
-        if (!text) return null;
-        const normalized = text.toUpperCase().replace(/[^A-Z0-9↑]/g, ' ').replace(/\s+/g, ' ').trim();
-
-        // 1. BH Series: e.g. "22 BH 8421 AB"
-        const bhMatch = normalized.match(/^(\d{2})\s*BH\s*(\d{4})\s*([A-Z]{1,2})$/);
-        if (bhMatch) return `${bhMatch[1]} BH ${bhMatch[2]} ${bhMatch[3]}`;
-
-        // 2. Standard Indian 4-part: e.g. "KA 05 MN 4567"
-        const stdMatch = normalized.match(/^([A-Z]{2})\s*(\d{1,2})\s*([A-Z]{1,3})\s*(\d{1,4})$/);
-        if (stdMatch) return `${stdMatch[1]} ${stdMatch[2]} ${stdMatch[3]} ${stdMatch[4]}`;
-
-        // 3. Electric Vehicle: e.g. "DL 04 EV 2024"
-        const evMatch = normalized.match(/^([A-Z]{2})\s*(\d{1,2})\s*EV\s*(\d{1,4})$/);
-        if (evMatch) return `${evMatch[1]} ${evMatch[2]} EV ${evMatch[3]}`;
-
-        // 4. Commercial Single-Letter: e.g. "MH 02 E 8821"
-        const commMatch = normalized.match(/^([A-Z]{2})\s*(\d{1,2})\s*([A-Z])\s*(\d{1,4})$/);
-        if (commMatch) return `${commMatch[1]} ${commMatch[2]} ${commMatch[3]} ${commMatch[4]}`;
-
-        // 5. Diplomatic: e.g. "77 CD 01"
-        const dipMatch = normalized.match(/^(\d{1,3})\s*(CD|UN|CC)\s*(\d{1,3})$/);
-        if (dipMatch) return `${dipMatch[1]} ${dipMatch[2]} ${dipMatch[3]}`;
-
-        // 6. Military: e.g. "↑ 21 D 654321 A"
-        const milMatch = normalized.match(/^[↑]?\s*(\d{2})\s*([A-Z])\s*(\d{5,7})\s*([A-Z]?)$/);
-        if (milMatch) return `↑ ${milMatch[1]} ${milMatch[2]} ${milMatch[3]} ${milMatch[4] || ''}`.trim();
-
-        // General alphanumeric fallback
-        const words = normalized.split(' ').filter(w => w.length > 0);
-        if (words.length >= 2) return words.join(' ');
-        return normalized.length >= 4 ? normalized : null;
+    async function recognizePlate() {
+        if (!detectedPlate || isProcessing) return;
+        isProcessing = true;
+        if (readButton) readButton.disabled = true;
+        setStatus('Re-reading plate text…');
+        try {
+            const text = await runOCR();
+            recognizedText = text || currentBoardInfo.samplePlate;
+            if (registrationInput) {
+                registrationInput.value = recognizedText;
+                registrationInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            showDetectionResult(currentBoardInfo, recognizedText);
+            setStatus(`Plate: "${recognizedText}". Verify and click "Auto-Fill & Park".`);
+        } catch (error) {
+            setStatus(`OCR error: ${error.message}`, true);
+        } finally {
+            isProcessing = false;
+            if (readButton) readButton.disabled = false;
+        }
     }
 
     async function loadOcrLibrary() {
@@ -589,50 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function recognizePlate() {
-        if (!detectedPlate || isReading) return;
-        isReading = true;
-        if (readButton) readButton.disabled = true;
-        if (captureButton) captureButton.disabled = true;
-        setStatus('Running OCR text reader… First run may take a few seconds to load models.');
 
-        try {
-            const tesseract = await loadOcrLibrary();
-            if (!ocrWorker) {
-                ocrWorker = await tesseract.createWorker('eng', 1, {
-                    logger: m => {
-                        if (m.status === 'recognizing text' && typeof m.progress === 'number') {
-                            setStatus(`Reading plate text… ${Math.round(m.progress * 100)}%`);
-                        }
-                    }
-                });
-                await ocrWorker.setParameters({
-                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789↑',
-                    preserve_interword_spaces: '1'
-                });
-            }
-
-            const result = await ocrWorker.recognize(canvas);
-            const candidate = formatPlateCandidate(result.data.text);
-            recognizedText = candidate || currentBoardInfo.samplePlate;
-
-            if (registrationInput) {
-                registrationInput.value = recognizedText;
-                registrationInput.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-
-            showDetectionResult(currentBoardInfo, recognizedText);
-            setStatus(`Plate recognized: "${recognizedText}". Check and click "Auto-Fill & Park Car".`);
-        } catch (error) {
-            recognizedText = currentBoardInfo.samplePlate;
-            showDetectionResult(currentBoardInfo, recognizedText);
-            setStatus(`OCR Note: using detected plate candidate "${recognizedText}".`);
-        } finally {
-            isReading = false;
-            if (captureButton) captureButton.disabled = false;
-            if (readButton) readButton.disabled = false;
-        }
-    }
 
     function showDetectionResult(board, plateText) {
         if (!resultCard) return;
@@ -690,7 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     openButton.addEventListener('click', () => openScanner());
     if (closeButton) closeButton.addEventListener('click', closeScanner);
-    if (captureButton) captureButton.addEventListener('click', captureFrame);
+    if (captureButton) captureButton.addEventListener('click', captureAndAutoDetect);
     if (detectButton) detectButton.addEventListener('click', detectPlate);
     if (readButton) readButton.addEventListener('click', recognizePlate);
     if (autoParkButton) autoParkButton.addEventListener('click', autoParkDetectedPlate);
