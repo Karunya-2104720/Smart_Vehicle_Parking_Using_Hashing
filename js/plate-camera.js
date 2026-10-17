@@ -422,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function captureAndAutoDetect() {
+        console.log('captureAndAutoDetect called, isProcessing:', isProcessing);
         if (isProcessing) return;
         if (!video.videoWidth || !video.videoHeight) {
             setStatus('Camera preview not ready yet. Please wait a moment.', true);
@@ -429,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         autoDetectAttempts++;
+        console.log('Detection attempt:', autoDetectAttempts);
         if (captureButton) {
             captureButton.textContent = `🔄 Auto-Detecting... (Attempt ${autoDetectAttempts}/2)`;
             captureButton.disabled = true;
@@ -451,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (detectButton)  detectButton.disabled = true;
         if (readButton)    readButton.disabled = true;
 
+        console.log('Starting detection pipeline...');
         // Step 2+3: Auto-detect board type + OCR text
         await runAutoDetectPipeline();
 
@@ -562,23 +565,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 const imageBlob = await new Promise((resolve, reject) => {
                     fullFrame.toBlob(b => b ? resolve(b) : reject(new Error('Encode failed')), 'image/jpeg', 0.95);
                 });
+                console.log('Sending image to vision service...', imageBlob.size, 'bytes');
                 const response = await fetch(`${localVisionServiceUrl}/detect`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'image/jpeg' },
                     body: imageBlob,
                     signal: AbortSignal.timeout(6000)
                 });
+                console.log('Vision service response status:', response.status);
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Vision service result:', result);
                     if (result.detections && result.detections.length > 0) {
                         hasDetections = true;
                         const best = result.detections[0];
+                        console.log('Best detection:', best);
                         if (best.boardType && best.boardType.code) {
                             serverBoard = BOARD_DEFINITIONS[best.boardType.code];
+                            console.log('Server board type:', serverBoard);
                         }
+                    } else {
+                        console.log('No detections in result');
                     }
+                } else {
+                    console.error('Vision service returned error:', response.status);
                 }
-            } catch { /* fallback to canvas color classifier */ }
+            } catch (error) {
+                console.error('Vision service error:', error);
+                /* fallback to canvas color classifier */
+            }
 
             // Stop if no plates detected
             if (!hasDetections && !serverBoard) {
