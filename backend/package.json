@@ -10,7 +10,10 @@
     "test:research": "node tests/researchHashTable.test.js",
     "benchmark": "node benchmarks/runBenchmarks.js",
     "benchmark:quick": "node benchmarks/runBenchmarks.js --quick",
+    "vision:download": "python vision/download_dataset.py",
     "vision:train": "python vision/train.py",
+    "vision:train:quick": "python vision/train.py --epochs 10 --batch 8",
+    "vision:train:custom": "python vision/train.py",
     "vision:service": "python -m uvicorn detect_server:app --app-dir vision --host 127.0.0.1 --port 8001"
   },
   "keywords": [

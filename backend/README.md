@@ -101,9 +101,16 @@ backend/
 ├── tests/
 │   ├── hashing.test.js       # Existing interactive-table tests
 │   └── researchHashTable.test.js
-└── benchmarks/
-    ├── runBenchmarks.js       # Repeatable workload runner
-    └── results/               # Generated measurement, distribution, and SVG files
+├── benchmarks/
+│   ├── runBenchmarks.js       # Repeatable workload runner
+│   └── results/               # Generated measurement, distribution, and SVG files
+└── vision/                   # ML Pipeline for License Plate Detection
+    ├── download_dataset.py   # Roboflow dataset download with error handling
+    ├── train.py              # YOLO11 training with hyperparameter configuration
+    ├── detect_server.py      # FastAPI vision service for inference
+    ├── ML_PIPELINE.md        # Complete ML pipeline documentation
+    ├── models/               # Trained model weights and metrics
+    └── runs/                 # Training runs and artifacts
 ```
 
 ---
@@ -119,6 +126,69 @@ backend/
   *The step is adjusted when needed so double hashing can traverse every slot.*
 - **Open Addressing & Tombstones**:
   Deleted cars leave a `TOMBSTONE` marker so that probe chains are not prematurely broken.
+
+## 🤖 ML Pipeline for License Plate Detection
+
+The backend includes a complete machine learning pipeline for automatic license plate detection and board type classification. This powers the frontend's camera-based vehicle registration feature.
+
+### Pipeline Overview
+
+The ML pipeline consists of four main components:
+
+1. **Dataset Management** - Download and validate license plate dataset from Roboflow
+2. **Model Training** - Train YOLO11 model for plate detection with configurable hyperparameters
+3. **Frontend Runtime** - OCR preprocessing and detection requests
+4. **Backend Detection Service** - YOLO inference with Roboflow fallback
+
+### Quick Start for ML Pipeline
+
+#### 1. Download Dataset
+```bash
+npm run vision:download
+```
+
+#### 2. Train Model
+```bash
+# Default training (20 epochs)
+npm run vision:train
+
+# Quick training (10 epochs, larger batch)
+npm run vision:train:quick
+
+# Custom training with specific parameters
+npm run vision:train:custom -- --epochs 50 --batch 8 --model-size s
+```
+
+#### 3. Start Backend
+```bash
+npm start
+```
+
+The backend will automatically start the vision detection service on port 8001.
+
+### ML Pipeline Scripts
+
+- `vision/download_dataset.py` - Dataset download with error handling and validation
+- `vision/train.py` - YOLO11 training with comprehensive logging and metrics
+- `vision/detect_server.py` - FastAPI service for plate detection inference
+
+### Documentation
+
+See `vision/ML_PIPELINE.md` for complete documentation including:
+- Detailed pipeline architecture
+- Hyperparameter configuration
+- Environment variables
+- Troubleshooting guide
+- Performance optimization tips
+
+### Vision Service Endpoints
+
+- `GET /api/vision/health` - Check vision service health
+- `POST /api/vision/detect` - Detect license plates in image (max 8MB)
+
+The frontend automatically integrates with these endpoints for camera-based plate detection.
+
+---
 
 ## Research implementation
 
