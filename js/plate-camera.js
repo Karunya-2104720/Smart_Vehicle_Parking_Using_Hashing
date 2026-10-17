@@ -415,8 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ── IMAGE PREPROCESSING for OCR accuracy ── */
     function preprocessCanvasForOCR(sourceCanvas, mode = 'standard') {
         const w = sourceCanvas.width, h = sourceCanvas.height;
-        // Scale up small images (OCR works better at >=300px height)
-        const scale = h < 300 ? Math.ceil(300 / h) : 1;
+        // Scale up small images (OCR works better at >=400px height for better accuracy)
+        const scale = h < 400 ? Math.ceil(400 / h) : 1;
         const pw = w * scale, ph = h * scale;
         const proc = document.createElement('canvas');
         proc.width = pw; proc.height = ph;
@@ -459,18 +459,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
             
             if (mode === 'standard') {
-                // Grayscale + contrast stretch + adaptive threshold
-                const adjusted = Math.min(255, Math.max(0, 2.0 * (gray - 128) + 128));
+                // Grayscale + contrast stretch + adaptive threshold + sharpening
+                const adjusted = Math.min(255, Math.max(0, 2.5 * (gray - 128) + 128));
                 const binary = adjusted > threshold ? 255 : 0;
                 d[i] = d[i+1] = d[i+2] = binary;
             } else if (mode === 'high-contrast') {
                 // Aggressive contrast for low-quality images
-                const adjusted = Math.min(255, Math.max(0, 3.0 * (gray - 128) + 128));
-                const binary = adjusted > (threshold - 10) ? 255 : 0;
+                const adjusted = Math.min(255, Math.max(0, 3.5 * (gray - 128) + 128));
+                const binary = adjusted > (threshold - 15) ? 255 : 0;
                 d[i] = d[i+1] = d[i+2] = binary;
             } else if (mode === 'grayscale') {
-                // Just grayscale, no thresholding
-                d[i] = d[i+1] = d[i+2] = gray;
+                // Enhanced grayscale with contrast
+                const adjusted = Math.min(255, Math.max(0, 1.8 * (gray - 128) + 128));
+                d[i] = d[i+1] = d[i+2] = adjusted;
+            } else if (mode === 'inverted') {
+                // Inverted for dark-on-light plates
+                const adjusted = Math.min(255, Math.max(0, 2.0 * (gray - 128) + 128));
+                const binary = adjusted > threshold ? 0 : 255;
+                d[i] = d[i+1] = d[i+2] = binary;
             }
         }
         ctx.putImageData(imgData, 0, 0);
@@ -568,40 +574,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 textord_force_make_prop_words: '1',
                 edges_use_new_outline_complexity: '1',
                 textord_baseline_type: '1',
+                classify_bln_numeric_mode: '1',
+                tessedit_enable_dict_correction: '1',
+                tessedit_enable_doc_dict: '1',
+                load_system_dawg: '1',
+                load_freq_dawg: '1',
+                load_unambig_dawg: '1',
+                load_punc_dawg: '0',
+                load_number_dawg: '1',
+                load_bigram_dawg: '0',
+                wordrec_enable_assoc: '1',
+                textord_noise_normratio: '2.0',
+                textord_noise_size: '2.0',
             });
         }
 
-        // Multiple passes with different preprocessing strategies
-        const passes = [
-            preprocessCanvasForOCR(canvas, 'standard'),
-            preprocessCanvasForOCR(canvas, 'high-contrast'),
-            preprocessCanvasForOCR(canvas, 'grayscale'),
-            canvas
-        ];
+        // Multiple passes with different preprocessing strategies and scales
+        const scales = [1, 1.5, 2];
+        const modes = ['standard', 'high-contrast', 'grayscale', 'inverted'];
         let bestResult = null, bestConfidence = 0;
 
-        for (const src of passes) {
-            try {
-                const result = await ocrWorker.recognize(src);
-                const rawText = result.data.text || '';
-                const conf    = result.data.confidence || 0;
-                
-                // Clean up OCR output
-                const cleanedText = rawText
-                    .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, '')
-                    .replace(/([A-Z]{2})(\d)/, '$1 $2')
-                    .replace(/(\d{2})([A-Z])/, '$1 $2')
-                    .replace(/([A-Z]{2,3})(\d{4})/, '$1 $2')
-                    .trim();
-                
-                const validated = validateIndianPlate(cleanedText);
-                if (validated && conf > bestConfidence) {
-                    bestResult = validated;
-                    bestConfidence = conf;
-                }
-                if (validated && conf > 70) break; // Good enough, stop
-            } catch { /* try next pass */ }
+        for (const scale of scales) {
+            for (const mode of modes) {
+                try {
+                    // Create scaled canvas
+                    const scaled = document.createElement('canvas');
+                    scaled.width = Math.floor(canvas.width * scale);
+                    scaled.height = Math.floor(canvas.height * scale);
+                    const scaledCtx = scaled.getContext('2d');
+                    scaledCtx.imageSmoothingEnabled = true;
+                    scaledCtx.imageSmoothingQuality = 'high';
+                    scaledCtx.drawImage(canvas, 0, 0, scaled.width, scaled.height);
+                    
+                    const processed = preprocessCanvasForOCR(scaled, mode);
+                    const result = await ocrWorker.recognize(processed);
+                    const rawText = result.data.text || '';
+                    const conf = result.data.confidence || 0;
+                    
+                    // Clean up OCR output with better pattern matching
+                    let cleanedText = rawText
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, '')
+                        .trim();
+                    
+                    // Try to insert spaces in likely positions
+                    if (cleanedText.length >= 8) {
+                        cleanedText = cleanedText
+                            .replace(/^([A-Z]{2})(\d)/, '$1 $2')
+                            .replace(/(\d{2})([A-Z])/, '$1 $2')
+                            .replace(/([A-Z]{1,3})(\d{4})/, '$1 $2');
+                    }
+                    
+                    const validated = validateIndianPlate(cleanedText);
+                    if (validated && conf > bestConfidence) {
+                        bestResult = validated;
+                        bestConfidence = conf;
+                    }
+                    if (validated && conf > 75) return bestResult; // Very good, return immediately
+                } catch { /* try next pass */ }
+            }
         }
         return bestResult;  // null if no valid Indian plate found
     }

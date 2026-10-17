@@ -1070,13 +1070,13 @@ body[data-page="learn"] #simulator-view {
     font-weight: 700;
     padding: 0.25rem 0.65rem;
     border-radius: 9999px;
-    display: inline-flex;
+    display: none; /* Hide board type badge */
     align-items: center;
     gap: 0.35rem;
 }
 
 .result-grid {
-    display: grid;
+    display: none; /* Hide vehicle category and deck suggestion */
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 0.75rem;
     font-size: 0.82rem;
