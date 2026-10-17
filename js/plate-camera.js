@@ -532,7 +532,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (plateText) {
                 setStatus(`Detected: "${recognizedText}" (${currentBoardInfo.name}). Click "Auto-Fill & Park" to proceed.`);
             } else {
-                setStatus('Could not read plate clearly — showing closest match. Verify before parking.');
+                setStatus('Could not read plate clearly — reopening camera in 2 seconds for retry...');
+                // Auto-reopen camera after 2 seconds if detection failed
+                setTimeout(() => {
+                    if (modal.classList.contains('active')) {
+                        capturedImage = false;
+                        detectedPlate = false;
+                        if (canvas) canvas.hidden = true;
+                        if (video) video.hidden = false;
+                        if (resultCard) resultCard.style.display = 'none';
+                        startCamera();
+                    }
+                }, 2000);
             }
         } catch (error) {
             setStatus(`Detection error: ${error.message}`, true);
