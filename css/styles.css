@@ -267,7 +267,9 @@ body[data-page="learn"] #simulator-view {
 }
 
 .camera-dialog {
-    max-width: 720px;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
 .camera-dialog .card-header {
@@ -279,8 +281,8 @@ body[data-page="learn"] #simulator-view {
     position: relative;
     display: grid;
     place-items: center;
-    min-height: 220px;
-    max-height: 55vh;
+    min-height: 200px;
+    max-height: 40vh;
     overflow: hidden;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -290,7 +292,7 @@ body[data-page="learn"] #simulator-view {
 .camera-preview video {
     display: block;
     width: 100%;
-    max-height: 55vh;
+    max-height: 40vh;
     object-fit: contain;
 }
 
@@ -302,7 +304,7 @@ body[data-page="learn"] #simulator-view {
 .camera-preview canvas {
     display: block;
     width: 100%;
-    max-height: 55vh;
+    max-height: 40vh;
     object-fit: contain;
 }
 
@@ -848,10 +850,12 @@ body[data-page="learn"] #simulator-view {
 }
 
 .camera-dialog {
-    max-width: 680px;
+    max-width: 900px;
+    max-height: 85vh;
     background: #0f172a;
     border: 1px solid rgba(59, 130, 246, 0.3);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(59, 130, 246, 0.15);
+    overflow-y: auto;
 }
 
 /* Scanner Tabs Navigation */
