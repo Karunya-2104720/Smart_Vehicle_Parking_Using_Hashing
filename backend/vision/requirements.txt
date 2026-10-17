@@ -2,3 +2,4 @@ fastapi>=0.110,<1
 uvicorn[standard]>=0.29,<1
 ultralytics>=8.3,<9
 pillow>=10,<12
+inference-sdk>=1.8

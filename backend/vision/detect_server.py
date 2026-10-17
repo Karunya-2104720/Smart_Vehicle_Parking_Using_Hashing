@@ -3,6 +3,7 @@
 import os
 from io import BytesIO
 from pathlib import Path
+import tempfile
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ import torch
 from ultralytics import YOLO
 import numpy as np
 import cv2
+from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
 BOARD_TYPES = {
     "WHITE_PRIVATE": {
@@ -159,6 +161,49 @@ def classify_plate_board(crop_rgb):
         return BOARD_TYPES["WHITE_PRIVATE"]
 
 
+def detect_with_roboflow(image_path, image):
+    """Fallback detection using Roboflow inference API for Indian plates."""
+    if roboflow_client is None:
+        return []
+    
+    try:
+        result = roboflow_client.infer(image_path, model_id=ROBOFLOW_MODEL_ID)
+        
+        detections = []
+        if "predictions" in result:
+            for prediction in result["predictions"]:
+                x = prediction.get("x", 0)
+                y = prediction.get("y", 0)
+                width = prediction.get("width", 0)
+                height = prediction.get("height", 0)
+                confidence = prediction.get("confidence", 0)
+                
+                # Convert center coordinates to top-left coordinates
+                x1 = max(0, x - width / 2)
+                y1 = max(0, y - height / 2)
+                x2 = min(image.width, x + width / 2)
+                y2 = min(image.height, y + height / 2)
+                
+                # Crop the plate for board classification
+                plate_crop = image.crop((int(x1), int(y1), int(x2), int(y2)))
+                board_type = classify_plate_board(plate_crop)
+                
+                detections.append({
+                    "x": float(x1),
+                    "y": float(y1),
+                    "width": float(width),
+                    "height": float(height),
+                    "confidence": float(confidence),
+                    "boardType": board_type,
+                })
+        
+        detections.sort(key=lambda detection: detection["confidence"], reverse=True)
+        return detections
+    except Exception as e:
+        print(f"Roboflow inference failed: {e}")
+        return []
+
+
 HERE = Path(__file__).resolve().parent
 MODEL_PATH = Path(os.environ.get(
     "VISION_MODEL_PATH",
@@ -167,6 +212,21 @@ MODEL_PATH = Path(os.environ.get(
 CONFIDENCE = float(os.environ.get("VISION_CONFIDENCE", "0.25"))
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 DEVICE = "0" if torch.cuda.is_available() else "cpu"
+
+# Roboflow Inference Client for Indian Plates
+ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "cHvpy0iFQDCFpLvMBRCz")
+ROBOFLOW_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", "indian-number-platess/2")
+roboflow_client = None
+
+try:
+    roboflow_client = InferenceHTTPClient(
+        api_url="https://serverless.roboflow.com",
+        api_key=ROBOFLOW_API_KEY
+    ).configure(InferenceConfiguration(
+        api_key_transport="header"
+    ))
+except Exception as e:
+    print(f"Roboflow client initialization failed: {e}")
 ALLOWED_ORIGINS = {
     "https://smart-vehicle-parking-using-hashing.onrender.com",
     "http://localhost:5000",
@@ -210,9 +270,6 @@ def health():
 
 @app.post("/detect")
 async def detect(request: Request):
-    if model is None:
-        raise HTTPException(status_code=503, detail=model_error or "YOLO model is unavailable.")
-
     image_bytes = await request.body()
     if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=400, detail="Send a non-empty image no larger than 8 MB.")
@@ -222,37 +279,59 @@ async def detect(request: Request):
     except (UnidentifiedImageError, OSError) as error:
         raise HTTPException(status_code=400, detail="The request body is not a supported image.") from error
 
-    try:
-        result = model.predict(
-            source=image,
-            conf=CONFIDENCE,
-            imgsz=640,
-            device=DEVICE,
-            verbose=False,
-        )[0]
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"YOLO inference failed: {error}") from error
-
     detections = []
-    if result.boxes is not None:
-        for box in result.boxes:
-            x1, y1, x2, y2 = (float(value) for value in box.xyxy[0].tolist())
-            # Ensure coordinates are within image bounds
-            cx1 = max(0, min(image.width - 1, int(x1)))
-            cy1 = max(0, min(image.height - 1, int(y1)))
-            cx2 = max(cx1 + 1, min(image.width, int(x2)))
-            cy2 = max(cy1 + 1, min(image.height, int(y2)))
-            plate_crop = image.crop((cx1, cy1, cx2, cy2))
-            board_type = classify_plate_board(plate_crop)
+    
+    # Try local YOLO model first
+    if model is not None:
+        try:
+            result = model.predict(
+                source=image,
+                conf=CONFIDENCE,
+                imgsz=640,
+                device=DEVICE,
+                verbose=False,
+            )[0]
+            
+            if result.boxes is not None:
+                for box in result.boxes:
+                    x1, y1, x2, y2 = (float(value) for value in box.xyxy[0].tolist())
+                    # Ensure coordinates are within image bounds
+                    cx1 = max(0, min(image.width - 1, int(x1)))
+                    cy1 = max(0, min(image.height - 1, int(y1)))
+                    cx2 = max(cx1 + 1, min(image.width, int(x2)))
+                    cy2 = max(cy1 + 1, min(image.height, int(y2)))
+                    plate_crop = image.crop((cx1, cy1, cx2, cy2))
+                    board_type = classify_plate_board(plate_crop)
 
-            detections.append({
-                "x": x1,
-                "y": y1,
-                "width": x2 - x1,
-                "height": y2 - y1,
-                "confidence": float(box.conf[0]),
-                "boardType": board_type,
-            })
+                    detections.append({
+                        "x": x1,
+                        "y": y1,
+                        "width": x2 - x1,
+                        "height": y2 - y1,
+                        "confidence": float(box.conf[0]),
+                        "boardType": board_type,
+                    })
+        except Exception as error:
+            print(f"Local YOLO inference failed: {error}")
+    
+    # If no detections from local model, try Roboflow as fallback
+    if not detections and roboflow_client is not None:
+        try:
+            # Save image temporarily for Roboflow inference
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                temp_path = temp_file.name
+                image.save(temp_file, "JPEG")
+            
+            detections = detect_with_roboflow(temp_path, image)
+            
+            # Clean up temp file
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+        except Exception as error:
+            print(f"Roboflow fallback failed: {error}")
+    
     detections.sort(key=lambda detection: detection["confidence"], reverse=True)
 
     return {
