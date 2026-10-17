@@ -1,0 +1,32 @@
+{
+  "name": "smart-parking-backend",
+  "version": "1.0.0",
+  "description": "Educational backend for Smart Parking Slot Management System demonstrating manual Hash Table and Collision Resolution Algorithms",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tests/hashing.test.js && node tests/researchHashTable.test.js && node tests/visionRoutes.test.js",
+    "test:research": "node tests/researchHashTable.test.js",
+    "benchmark": "node benchmarks/runBenchmarks.js",
+    "benchmark:quick": "node benchmarks/runBenchmarks.js --quick",
+    "vision:train": "python vision/train.py",
+    "vision:service": "python -m uvicorn detect_server:app --app-dir vision --host 127.0.0.1 --port 8001"
+  },
+  "keywords": [
+    "hashing",
+    "data-structures",
+    "linear-probing",
+    "quadratic-probing",
+    "double-hashing",
+    "smart-parking",
+    "educational"
+  ],
+  "author": "Smart Parking Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

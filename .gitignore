@@ -1,0 +1,16 @@
+node_modules/
+backend/node_modules/
+.env
+backend/.env
+backend/data/parkingData.json
+backend/runs/
+backend/vision/runs/
+backend/vision/generated-data.yaml
+*.pt
+License Plate Recognition.v11i.yolov11/
+*.yolov11/
+*.code-workspace
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db
