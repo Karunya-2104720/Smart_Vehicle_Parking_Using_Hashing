@@ -281,7 +281,8 @@ class HashTable {
             car: {
                 registrationNumber: car.registrationNumber,
                 key: car.key,
-                color: car.color
+                color: car.color,
+                boardType: car.boardType
             },
             hashIndex,
             finalSlot: probeResult.finalIndex,

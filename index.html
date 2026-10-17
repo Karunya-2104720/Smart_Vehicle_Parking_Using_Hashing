@@ -111,8 +111,30 @@
                                 <div class="input-with-badge">
                                     <input type="text" id="car-reg-input" class="text-input" placeholder="e.g. TN 09 AB 1021" value="TN 09 AB 1021">
                                 </div>
+
+                                <!-- Quick Board Type Selector -->
+                                <div class="quick-board-pills" aria-label="Select board type">
+                                    <span style="font-size: 0.72rem; color: var(--text-muted); align-self: center; margin-right: 2px;">Board:</span>
+                                    <button type="button" class="pill-board-btn" data-board="WHITE_PRIVATE" title="White Board - Private Vehicle">⚪ Private</button>
+                                    <button type="button" class="pill-board-btn" data-board="YELLOW_COMMERCIAL" title="Yellow Board - Commercial Transport">🟡 Commercial</button>
+                                    <button type="button" class="pill-board-btn" data-board="GREEN_EV" title="Green Board - Electric Vehicle">🟢 EV</button>
+                                    <button type="button" class="pill-board-btn" data-board="BLACK_RENTAL" title="Black Board - Self-Drive Rental">⚫ Rental</button>
+                                    <button type="button" class="pill-board-btn" data-board="BLUE_DIPLOMATIC" title="Blue Board - Diplomatic Corps">🔵 Diplomatic</button>
+                                    <button type="button" class="pill-board-btn" data-board="BH_SERIES" title="Bharat Series - Pan India">🇮🇳 BH Series</button>
+                                    <button type="button" class="pill-board-btn" data-board="RED_GOVERNMENT" title="Red Board - Government Official">🔴 Govt</button>
+                                    <button type="button" class="pill-board-btn" data-board="DEFENSE_MILITARY" title="Arrow Board - Armed Forces">🛡️ Military</button>
+                                </div>
+
+                                <!-- Live Plate Preview -->
+                                <div class="plate-preview-wrapper" style="margin: 0.4rem 0 0.6rem 0; text-align: center;">
+                                    <div class="plate-card-mockup plate-white" id="live-plate-preview">
+                                        <span class="plate-ind-strip"><span>IND</span></span>
+                                        <span class="mock-plate-number" id="live-plate-number">TN 09 AB 1021</span>
+                                    </div>
+                                </div>
+
                                 <button type="button" class="btn btn-secondary btn-block camera-scan-button" id="btn-scan-plate">
-                                    <span aria-hidden="true">📷</span> Scan Plate with Camera
+                                    <span aria-hidden="true">📸</span> AI Number Plate &amp; Board Scanner
                                 </button>
                             </div>
 
@@ -347,7 +369,7 @@
                                     </tr>
                                     <tr>
                                         <td><strong>Tombstone (Deleted)</strong></td>
-                                        <td>"Vacated Bay" Marker 🪦</td>
+                                        <td🗑️Vacated Bay" Marker 🪦</td>
                                         <td>Marker indicating a car departed. Allows insertion while keeping search chains alive!</td>
                                     </tr>
                                     <tr>
@@ -505,6 +527,233 @@
                 </div>
             </section>
 
+
+            <!-- Dedicated Showcase for All 8 Number Plate Board Types -->
+            <section class="boards-showcase-section" id="boards-showcase-section">
+                <div class="card-header" style="margin-bottom: 0.5rem;">
+                    <div>
+                        <h2 class="card-title" style="font-size: 1.35rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>🚗</span> Vehicle Number Plate Boards AI Scanner &amp; Showcase
+                        </h2>
+                        <p class="card-subtitle">
+                            Comprehensive computer vision detection for all 8 Indian vehicle registration board types. Each board is routed to its designated smart parking deck.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.SmartParkingBoardScanner ? window.SmartParkingBoardScanner.openScanner() : null">
+                        <span>📸</span> Open Full AI Scanner
+                    </button>
+                </div>
+
+                <div class="boards-grid-showcase">
+                    <!-- Card 1: White Board (Private) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(248, 250, 252, 0.15); color: #f8fafc; border: 1px solid rgba(255,255,255,0.2);">⚪ White Board</span>
+                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Personal Use</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-white">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">KA 05 MN 4567</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Private / Personal Vehicle</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Standard motor vehicle for private personal transport. Black alphanumeric text on retro-reflective white background.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #38bdf8;">Decks 2–5 (General Slots 10–49)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="WHITE_PRIVATE" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test White Board
+                        </button>
+                    </div>
+
+                    <!-- Card 2: Yellow Board (Commercial) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4);">🟡 Yellow Board</span>
+                                <span style="font-size: 0.72rem; color: #fbbf24; font-weight: 600;">Commercial Fleet</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-yellow">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">MH 02 EE 8821</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Commercial Passenger &amp; Goods</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Commercial transport vehicles including Ola/Uber cabs, taxis, auto-rickshaws, city buses, and freight trucks.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #fbbf24;">Deck 7 (Commercial Fleet: Slots 60–69)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="YELLOW_COMMERCIAL" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Yellow Board
+                        </button>
+                    </div>
+
+                    <!-- Card 3: Green Board (Electric Vehicle) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 Green Board</span>
+                                <span style="font-size: 0.72rem; color: #34d399; font-weight: 600;">Electric Vehicle</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-green">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">DL 04 EV 2024</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Electric Vehicle (EV)</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Zero-emission electric vehicle. White text on retro-reflective green background. Priority fast-charging bay access.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #34d399;">Deck 1 (EV Fast Charging: Slots 0–9)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="GREEN_EV" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Green Board
+                        </button>
+                    </div>
+
+                    <!-- Card 4: Black Board (Rental Self-Drive) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(15, 23, 42, 0.8); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.4);">⚫ Black Board</span>
+                                <span style="font-size: 0.72rem; color: #facc15; font-weight: 600;">Self-Drive Fleet</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-black">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">KA 51 Z 3390</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Self-Drive Rental Fleet</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Commercial self-drive rental cars (Zoomcar, Revv, Myles). Distinctive yellow lettering on black background.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #facc15;">Deck 6 (Rental Fleet: Slots 50–59)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="BLACK_RENTAL" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Black Board
+                        </button>
+                    </div>
+
+                    <!-- Card 5: Blue Board (Diplomatic) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);">🔵 Blue Board</span>
+                                <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 600;">Diplomatic / UN</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-blue">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">77 CD 01</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Diplomatic &amp; Consular Corps</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Foreign embassies, High Commissions, United Nations (UN), Corps Diplomatique (CD), and Consular Corps (CC).
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #38bdf8;">Deck 1 (VIP &amp; Diplomatic: Slots 0–9)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="BLUE_DIPLOMATIC" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Blue Board
+                        </button>
+                    </div>
+
+                    <!-- Card 6: Bharat Series (BH) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(248, 250, 252, 0.15); color: #f8fafc; border: 1px solid rgba(255,255,255,0.2);">🇮🇳 BH Series</span>
+                                <span style="font-size: 0.72rem; color: #f8fafc; font-weight: 600;">Pan-India Portability</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-bh">
+                                    <span class="plate-ind-strip"><span>IND</span></span>
+                                    <span class="mock-plate-number">22 BH 8421 AB</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Bharat Series Registration</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Centralized pan-India series for defense and multi-state employees. Does not require NOC or re-registration across states.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #38bdf8;">Decks 2–5 (General Slots 10–49)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="BH_SERIES" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test BH Series
+                        </button>
+                    </div>
+
+                    <!-- Card 7: Red Board (Government Official) -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(185, 28, 28, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4);">🔴 Red Board</span>
+                                <span style="font-size: 0.72rem; color: #f87171; font-weight: 600;">Government Official</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-red">
+                                    <span class="plate-ind-strip" style="background: #991b1b;"><span>GOV</span></span>
+                                    <span class="mock-plate-number">DL 01 GOV 0001</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">State Govt / Dignitary</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Vehicles designated for State Governors, constitutional authorities, and high state government dignitaries with red background.
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #f87171;">Deck 1 (VIP Reserved: Slots 0–9)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="RED_GOVERNMENT" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Red Board
+                        </button>
+                    </div>
+
+                    <!-- Card 8: Military Defense Board -->
+                    <div class="board-showcase-card">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span class="result-badge" style="background: rgba(51, 65, 85, 0.4); color: #cbd5e1; border: 1px solid rgba(203, 213, 225, 0.3);">🛡️ Arrow Board</span>
+                                <span style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">Armed Forces</span>
+                            </div>
+                            <div style="margin: 0.5rem 0; text-align: center;">
+                                <div class="plate-card-mockup plate-military">
+                                    <span class="mock-plate-number">↑ 21 D 654321 A</span>
+                                </div>
+                            </div>
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.5rem;">Military &amp; Defence Forces</h3>
+                            <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4; margin-top: 0.25rem;">
+                                Indian Armed Forces vehicles registered under Ministry of Defence, marked with an upward-pointing broad arrow (↑).
+                            </p>
+                            <div style="margin-top: 0.6rem; font-size: 0.74rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: 4px;">
+                                <span style="color: #64748b;">Target Deck:</span> <strong style="color: #cbd5e1;">Deck 1 (Restricted Zone: Slots 0–9)</strong>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-block btn-test-sample-board" data-board="DEFENSE_MILITARY" style="margin-top: 0.75rem;">
+                            <span>⚡</span> Test Arrow Board
+                        </button>
+                    </div>
+                </div>
+            </section>
+
         </div>
     </main>
 
@@ -519,27 +768,150 @@
         </div>
     </footer>
 
+        <!-- Enhanced Number Plate & Board Type AI Scanner Modal -->
     <div class="modal-overlay" id="plate-camera-modal" aria-hidden="true">
         <section class="modal-dialog camera-dialog" role="dialog" aria-modal="true" aria-labelledby="plate-camera-title">
             <div class="card-header">
                 <div>
-                    <h2 class="card-title" id="plate-camera-title">Scan Vehicle Plate</h2>
-                    <p class="card-subtitle">Capture the vehicle. YOLO will locate the plate, then OCR will read it.</p>
+                    <h2 class="card-title" id="plate-camera-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📸</span> AI Vehicle Plate &amp; Board Scanner
+                    </h2>
+                    <p class="card-subtitle">Detect &amp; classify all 8 vehicle plate board types (Private, Commercial, EV, Rental, Diplomatic, Govt, Defense, BH) with smart parking slot allocation.</p>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-close-camera" aria-label="Close camera">Close</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-close-camera" aria-label="Close camera">&times; Close</button>
             </div>
-            <div class="camera-preview">
-                <video id="plate-camera-video" autoplay playsinline muted></video>
-                <div class="camera-guide" aria-hidden="true"></div>
-                <canvas id="plate-camera-canvas" hidden></canvas>
+
+            <!-- Input Channel Tabs -->
+            <div class="scanner-tabs-nav">
+                <button type="button" class="scanner-tab-btn active" data-tab="camera">
+                    <span>📹</span> Live Camera
+                </button>
+                <button type="button" class="scanner-tab-btn" data-tab="upload">
+                    <span>📁</span> Upload Photo
+                </button>
+                <button type="button" class="scanner-tab-btn" data-tab="samples">
+                    <span>🏷️</span> Sample Boards Gallery
+                </button>
             </div>
-            <p class="camera-status" id="plate-camera-status" role="status" aria-live="polite">Requesting camera access…</p>
+
+            <!-- Tab 1: Live Camera -->
+            <div class="scanner-tab-pane active" id="tab-pane-camera">
+                <div class="camera-preview">
+                    <video id="plate-camera-video" autoplay playsinline muted></video>
+                    <div class="camera-guide" aria-hidden="true"></div>
+                </div>
+            </div>
+
+            <!-- Tab 2: File Upload -->
+            <div class="scanner-tab-pane" id="tab-pane-upload">
+                <div class="upload-dropzone" id="upload-dropzone">
+                    <input type="file" id="plate-file-input" accept="image/*" hidden>
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-title">Drop Vehicle Photo Here or Click to Browse</div>
+                    <div class="upload-subtitle">Supports JPG, PNG, WebP up to 8 MB</div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Interactive Sample Boards Gallery -->
+            <div class="scanner-tab-pane" id="tab-pane-samples">
+                <div class="sample-boards-grid">
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="WHITE_PRIVATE">
+                        <div class="plate-card-mockup plate-white">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">KA 05 MN 4567</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">⚪ Private Vehicle (White Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="YELLOW_COMMERCIAL">
+                        <div class="plate-card-mockup plate-yellow">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">MH 02 EE 8821</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #fbbf24;">🟡 Commercial Taxi/Cab (Yellow Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="GREEN_EV">
+                        <div class="plate-card-mockup plate-green">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">DL 04 EV 2024</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #34d399;">🟢 Electric Vehicle - EV (Green Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="BLACK_RENTAL">
+                        <div class="plate-card-mockup plate-black">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">KA 51 Z 3390</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #facc15;">⚫ Self-Drive Rental (Black Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="BLUE_DIPLOMATIC">
+                        <div class="plate-card-mockup plate-blue">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">77 CD 01</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #38bdf8;">🔵 Diplomatic / Embassy (Blue Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="BH_SERIES">
+                        <div class="plate-card-mockup plate-bh">
+                            <span class="plate-ind-strip"><span>IND</span></span>
+                            <span class="mock-plate-number">22 BH 8421 AB</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #cbd5e1;">🇮🇳 Bharat Series (Pan-India Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="RED_GOVERNMENT">
+                        <div class="plate-card-mockup plate-red">
+                            <span class="plate-ind-strip" style="background: #991b1b;"><span>GOV</span></span>
+                            <span class="mock-plate-number">DL 01 GOV 0001</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #f87171;">🔴 Government Official (Red Board)</span>
+                    </button>
+                    <button type="button" class="sample-board-btn btn-test-sample-board" data-board="DEFENSE_MILITARY">
+                        <div class="plate-card-mockup plate-military">
+                            <span class="mock-plate-number">↑ 21 D 654321 A</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">🛡️ Military / Defence (Arrow Board)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Common Processed Canvas -->
+            <canvas id="plate-camera-canvas" hidden style="width: 100%; border-radius: 6px; margin-top: 0.5rem;"></canvas>
+
+            <p class="camera-status" id="plate-camera-status" role="status" aria-live="polite">Ready to detect vehicle plate.</p>
+
             <div class="camera-actions">
-                <button type="button" class="btn btn-primary" id="btn-capture-plate">Capture image</button>
-                <button type="button" class="btn btn-secondary" id="btn-detect-plate" disabled>Detect plate with YOLO</button>
-                <button type="button" class="btn btn-accent" id="btn-read-plate" disabled>Read plate text</button>
+                <button type="button" class="btn btn-primary" id="btn-capture-plate">📸 Capture Image</button>
+                <button type="button" class="btn btn-secondary" id="btn-detect-plate" disabled>🔍 Detect Plate &amp; Board Type</button>
+                <button type="button" class="btn btn-accent" id="btn-read-plate" disabled>🔤 Read Plate Text (OCR)</button>
             </div>
-            <p class="camera-privacy-note">The captured image is sent to the local YOLO service on this computer and is not saved or sent to a third party. Check the recognized plate before parking.</p>
+
+            <!-- Real-time Detection Result Telemetry Card -->
+            <div class="detection-result-card" id="plate-detection-result" style="display: none;">
+                <div class="result-header">
+                    <div class="plate-card-mockup plate-white" id="result-mock-plate">
+                        <span class="plate-ind-strip"><span>IND</span></span>
+                        <span class="mock-plate-number">--</span>
+                    </div>
+                    <span class="result-badge" id="result-board-badge">⚪ White Board</span>
+                </div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-item-label">Vehicle Category</div>
+                        <div class="result-item-value" id="result-board-category">Private Vehicle</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">Smart Parking Deck</div>
+                        <div class="result-item-value" id="result-suggested-deck">Decks 2–5 (General)</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin: 0.5rem 0;" id="result-hash-formula">
+                    Numeric Key: <strong>--</strong> &rarr; Hash Slot: <code>-- % 70 = --</code>
+                </div>
+                <button type="button" class="btn btn-primary btn-block" id="btn-auto-park-plate" style="margin-top: 0.75rem;">
+                    <span>🅿️</span> Auto-Fill &amp; Park in System
+                </button>
+            </div>
+
+            <p class="camera-privacy-note">AI plate recognition operates locally. Board classification identifies White (Private), Yellow (Commercial), Green (EV), Black (Rental), Blue (Diplomatic), Red (Govt), Military Arrow, and BH Series.</p>
         </section>
     </div>
 

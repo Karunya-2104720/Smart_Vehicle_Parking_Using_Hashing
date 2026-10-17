@@ -533,6 +533,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 14b. Live Plate Preview & Quick Board Type Switching
+    const livePlatePreview = document.getElementById('live-plate-preview');
+    const livePlateNumber = document.getElementById('live-plate-number');
+
+    function updateLivePlatePreview(text, boardClass = null) {
+        if (!livePlatePreview || !livePlateNumber) return;
+        const val = (text || '').trim();
+        livePlateNumber.textContent = val || 'TN 09 AB 1021';
+
+        if (boardClass) {
+            livePlatePreview.className = `plate-card-mockup ${boardClass}`;
+            return;
+        }
+
+        const upper = val.toUpperCase();
+        if (upper.includes('↑')) {
+            livePlatePreview.className = 'plate-card-mockup plate-military';
+        } else if (/^\d{2}\s*BH/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-bh';
+        } else if (/\bEV\b/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-green';
+        } else if (/\b(CD|UN|CC)\b/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-blue';
+        } else if (/\bGOV\b/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-red';
+        } else if (/\b(TAXI|CAB)\b/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-yellow';
+        } else if (/\bRENTAL\b/i.test(upper)) {
+            livePlatePreview.className = 'plate-card-mockup plate-black';
+        } else {
+            livePlatePreview.className = 'plate-card-mockup plate-white';
+        }
+    }
+
+    if (regInput) {
+        regInput.addEventListener('input', e => updateLivePlatePreview(e.target.value));
+        updateLivePlatePreview(regInput.value);
+    }
+
+    document.querySelectorAll('.pill-board-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const boardKey = btn.dataset.board;
+            const scanner = window.SmartParkingBoardScanner;
+            const board = scanner && scanner.BOARD_DEFINITIONS ? scanner.BOARD_DEFINITIONS[boardKey] : null;
+            if (board && regInput) {
+                regInput.value = board.samplePlate;
+                const clsMap = {
+                    WHITE_PRIVATE: 'plate-white',
+                    YELLOW_COMMERCIAL: 'plate-yellow',
+                    GREEN_EV: 'plate-green',
+                    BLACK_RENTAL: 'plate-black',
+                    BLUE_DIPLOMATIC: 'plate-blue',
+                    RED_GOVERNMENT: 'plate-red',
+                    DEFENSE_MILITARY: 'plate-military',
+                    BH_SERIES: 'plate-bh'
+                };
+                updateLivePlatePreview(board.samplePlate, clsMap[boardKey]);
+                regInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+    });
+
     // 15. Update KPI Dashboard
     function updateKPIs() {
         const stats = table.updateStatistics();

@@ -353,7 +353,7 @@
                                     </tr>
                                     <tr>
                                         <td><strong>Tombstone (Deleted)</strong></td>
-                                        <td>"Vacated Bay" Marker 🪦</td>
+                                        <td🗑️Vacated Bay" Marker 🪦</td>
                                         <td>Marker indicating a car departed. Allows insertion while keeping search chains alive!</td>
                                     </tr>
                                     <tr>
@@ -512,7 +512,90 @@
             </section>
 
         </div>
-    </main>
+    
+        <!-- Section: Number Plate Boards & Computer Vision -->
+        <section class="learning-section" id="section-plate-boards" style="margin-top: 2.5rem;">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🚗</span> Computer Vision &amp; Vehicle Number Plate Boards
+                    </h2>
+                    <p class="card-subtitle">How YOLO Object Detection &amp; HSV Color Segmentation integrate with Hash Tables</p>
+                </div>
+            </div>
+
+            <div class="theory-block">
+                <p>
+                    A real-world automated parking lot combines <strong>Computer Vision (YOLOv11 &amp; OCR)</strong> with 
+                    <strong>Hashing Algorithms (Open Addressing)</strong>. In India and many countries, number plate boards 
+                    are color-coded to designate the vehicle's regulatory category and priority.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #f8fafc; font-size: 0.95rem; margin-bottom: 0.35rem;">⚪ Private Vehicles</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            White background, black text. Standard private cars and two-wheelers routed to general parking decks.
+                        </p>
+                    </div>
+                    <div style="background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #fbbf24; font-size: 0.95rem; margin-bottom: 0.35rem;">🟡 Commercial Vehicles</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Yellow background, black text. Commercial cabs, taxis, auto-rickshaws, and logistics trucks routed to commercial bays.
+                        </p>
+                    </div>
+                    <div style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #34d399; font-size: 0.95rem; margin-bottom: 0.35rem;">🟢 Electric Vehicles (EV)</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Green background, white/yellow text. Zero-emission vehicles routed with priority to EV fast-charging decks.
+                        </p>
+                    </div>
+                    <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(250,204,21,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #facc15; font-size: 0.95rem; margin-bottom: 0.35rem;">⚫ Self-Drive Rental</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Black background, yellow text. Commercial rental fleets (Zoomcar, Revv) allocated to dedicated rental fleet decks.
+                        </p>
+                    </div>
+                    <div style="background: rgba(2,132,199,0.05); border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #38bdf8; font-size: 0.95rem; margin-bottom: 0.35rem;">🔵 Diplomatic &amp; Embassy</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Light blue background, white text. Consular corps (CD, UN, CC) assigned to VIP secured bays.
+                        </p>
+                    </div>
+                    <div style="background: rgba(185,28,28,0.05); border: 1px solid rgba(248,113,113,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #f87171; font-size: 0.95rem; margin-bottom: 0.35rem;">🔴 Government &amp; VIP</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Red background with gold/white text or National Emblem for State Governors and dignitaries.
+                        </p>
+                    </div>
+                    <div style="background: rgba(51,65,85,0.2); border: 1px solid rgba(203,213,225,0.2); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 0.35rem;">🛡️ Military &amp; Defence</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            Upward broad arrow (↑) prefix. Ministry of Defence armed forces vehicles allocated to restricted security bays.
+                        </p>
+                    </div>
+                    <div style="background: rgba(248,250,252,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem;">
+                        <h4 style="color: #f8fafc; font-size: 0.95rem; margin-bottom: 0.35rem;">🇮🇳 Bharat Series (BH)</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8;">
+                            White background with YY BH #### XX format. Pan-India mobility series without requiring inter-state transfer.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="background: rgba(59,130,246,0.08); border-left: 3px solid #38bdf8; padding: 0.85rem 1.25rem; border-radius: 4px; margin-top: 1rem;">
+                    <strong style="color: #38bdf8;">Hashing Pipeline:</strong>
+                    <ol style="margin-top: 0.5rem; padding-left: 1.25rem; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+                        <li><strong>Plate Localization:</strong> YOLOv11 detects plate bounding box coordinates <code>(x, y, w, h)</code>.</li>
+                        <li><strong>Board Classification:</strong> HSV color space analysis determines dominant plate hue (Green, Yellow, Blue, Red, Black, White).</li>
+                        <li><strong>OCR Text Extraction:</strong> Tesseract.js recognizes the registration string and normalizes it.</li>
+                        <li><strong>Key Extraction:</strong> Numeric portion extracted (e.g. <code>2024</code> from <code>DL 04 EV 2024</code>).</li>
+                        <li><strong>Hash Table Allocation:</strong> Primary index computed via <code>hash(key) = key % 70</code>; collisions resolved via Linear, Quadratic, or Double Hashing.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+</main>
 
     <!-- Footer -->
     <footer class="app-footer">
