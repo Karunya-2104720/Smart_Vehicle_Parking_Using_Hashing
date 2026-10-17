@@ -213,20 +213,25 @@ CONFIDENCE = float(os.environ.get("VISION_CONFIDENCE", "0.25"))
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 DEVICE = "0" if torch.cuda.is_available() else "cpu"
 
-# Roboflow Inference Client for Indian Plates
-ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "cHvpy0iFQDCFpLvMBRCz")
+# Roboflow Inference Client for Indian Plates (optional, requires API key)
+ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY")
 ROBOFLOW_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", "indian-number-platess/2")
 roboflow_client = None
 
-try:
-    roboflow_client = InferenceHTTPClient(
-        api_url="https://serverless.roboflow.com",
-        api_key=ROBOFLOW_API_KEY
-    ).configure(InferenceConfiguration(
-        api_key_transport="header"
-    ))
-except Exception as e:
-    print(f"Roboflow client initialization failed: {e}")
+# Only initialize Roboflow client if API key is provided
+if ROBOFLOW_API_KEY:
+    try:
+        roboflow_client = InferenceHTTPClient(
+            api_url="https://serverless.roboflow.com",
+            api_key=ROBOFLOW_API_KEY
+        ).configure(InferenceConfiguration(
+            api_key_transport="header"
+        ))
+        print("Roboflow client initialized successfully")
+    except Exception as e:
+        print(f"Roboflow client initialization failed: {e}")
+else:
+    print("Roboflow API key not provided - using local YOLO model only")
 ALLOWED_ORIGINS = {
     "https://smart-vehicle-parking-using-hashing.onrender.com",
     "http://localhost:5000",
