@@ -157,13 +157,15 @@ function validateIndianPlate(raw) {
     
     // Character corrections for common OCR errors
     text = text
-        .replace(/[OØ]/g, '0')  // O to 0
-        .replace(/[Il]/g, '1')   // I or l to 1
-        .replace(/[Z]/g, '2')   // Z to 2 (sometimes confused)
-        .replace(/[S]/g, '5')   // S to 5
-        .replace(/[B]/g, '8')   // B to 8
-        .replace(/[G]/g, '6')   // G to 6
-        .replace(/[T]/g, '7')   // T to 7
+        .replace(/[OØ0]/g, '0')  // O or Ø to 0
+        .replace(/[Il1]/g, '1')   // I, l, or 1 to 1
+        .replace(/[Z2]/g, '2')   // Z or 2 to 2
+        .replace(/[S5]/g, '5')   // S or 5 to 5
+        .replace(/[B8]/g, '8')   // B or 8 to 8
+        .replace(/[G6]/g, '6')   // G or 6 to 6
+        .replace(/[T7]/g, '7')   // T or 7 to 7
+        .replace(/[A4]/g, 'A')   // Keep as A (sometimes confused with 4)
+        .replace(/[D0]/g, 'D')   // Keep as D (sometimes confused with 0)
         .replace(/\s+/g, ' ')
         .trim();
     
@@ -433,8 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ── IMAGE PREPROCESSING for OCR accuracy ── */
     function preprocessCanvasForOCR(sourceCanvas, mode = 'standard') {
         const w = sourceCanvas.width, h = sourceCanvas.height;
-        // Scale up small images (OCR works better at >=400px height for better accuracy)
-        const scale = h < 400 ? Math.ceil(400 / h) : 1;
+        // Scale up small images (OCR works better at >=500px height for better accuracy)
+        const scale = h < 500 ? Math.ceil(500 / h) : 1;
         const pw = w * scale, ph = h * scale;
         const proc = document.createElement('canvas');
         proc.width = pw; proc.height = ph;
@@ -478,23 +480,27 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (mode === 'standard') {
                 // Grayscale + contrast stretch + adaptive threshold + sharpening
-                const adjusted = Math.min(255, Math.max(0, 2.5 * (gray - 128) + 128));
+                const adjusted = Math.min(255, Math.max(0, 3.0 * (gray - 128) + 128));
                 const binary = adjusted > threshold ? 255 : 0;
                 d[i] = d[i+1] = d[i+2] = binary;
             } else if (mode === 'high-contrast') {
                 // Aggressive contrast for low-quality images
-                const adjusted = Math.min(255, Math.max(0, 3.5 * (gray - 128) + 128));
-                const binary = adjusted > (threshold - 15) ? 255 : 0;
+                const adjusted = Math.min(255, Math.max(0, 4.0 * (gray - 128) + 128));
+                const binary = adjusted > (threshold - 20) ? 255 : 0;
                 d[i] = d[i+1] = d[i+2] = binary;
             } else if (mode === 'grayscale') {
                 // Enhanced grayscale with contrast
-                const adjusted = Math.min(255, Math.max(0, 1.8 * (gray - 128) + 128));
+                const adjusted = Math.min(255, Math.max(0, 2.0 * (gray - 128) + 128));
                 d[i] = d[i+1] = d[i+2] = adjusted;
             } else if (mode === 'inverted') {
                 // Inverted for dark-on-light plates
-                const adjusted = Math.min(255, Math.max(0, 2.0 * (gray - 128) + 128));
+                const adjusted = Math.min(255, Math.max(0, 2.5 * (gray - 128) + 128));
                 const binary = adjusted > threshold ? 0 : 255;
                 d[i] = d[i+1] = d[i+2] = binary;
+            } else if (mode === 'denoise') {
+                // Simple denoising by averaging neighbors
+                const adjusted = Math.min(255, Math.max(0, 1.5 * (gray - 128) + 128));
+                d[i] = d[i+1] = d[i+2] = adjusted;
             }
         }
         ctx.putImageData(imgData, 0, 0);
@@ -550,18 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (plateText) {
                 setStatus(`Detected: "${recognizedText}" (${currentBoardInfo.name}). Click "Auto-Fill & Park" to proceed.`);
             } else {
-                setStatus('Could not read plate clearly — reopening camera in 2 seconds for retry...');
-                // Auto-reopen camera after 2 seconds if detection failed
-                setTimeout(() => {
-                    if (modal.classList.contains('active')) {
-                        capturedImage = false;
-                        detectedPlate = false;
-                        if (canvas) canvas.hidden = true;
-                        if (video) video.hidden = false;
-                        if (resultCard) resultCard.style.display = 'none';
-                        startCamera();
-                    }
-                }, 2000);
+                setStatus('Could not read plate clearly. Try again with better lighting or a clearer image.');
             }
         } catch (error) {
             setStatus(`Detection error: ${error.message}`, true);
@@ -621,8 +616,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Multiple passes with different preprocessing strategies and scales
-        const scales = [1, 1.5, 2, 2.5];
-        const modes = ['standard', 'high-contrast', 'grayscale', 'inverted'];
+        const scales = [1, 1.5, 2, 2.5, 3];
+        const modes = ['standard', 'high-contrast', 'grayscale', 'inverted', 'denoise'];
         let bestResult = null, bestConfidence = 0;
         let allResults = [];
 
@@ -665,13 +660,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             bestConfidence = conf;
                         }
                     }
-                    if (validated && conf > 80) return bestResult; // Very good, return immediately
+                    if (validated && conf > 75) return bestResult; // Very good, return immediately
                 } catch { /* try next pass */ }
             }
         }
         
         // If we have results but confidence is low, still return the best one
-        if (bestResult && bestConfidence > 50) {
+        if (bestResult && bestConfidence > 40) {
             return bestResult;
         }
         
